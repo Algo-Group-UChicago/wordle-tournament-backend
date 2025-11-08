@@ -4,6 +4,7 @@ import (
 	"log"
 	"wordle-tournament-backend/internal/config"
 	"wordle-tournament-backend/internal/server"
+	"wordle-tournament-backend/internal/wordsets"
 )
 
 func main() {
@@ -12,6 +13,9 @@ func main() {
 	log.Printf("Starting Wordle Tournament API...")
 	log.Printf("Environment: %s", cfg.Environment)
 	log.Printf("Port: %s", cfg.Port)
+
+	// Initialize word sets (thread-safe singleton pattern)
+	wordsets.Initialize("corpus.txt", "possible_answers.txt")
 
 	srv := server.New(cfg)
 

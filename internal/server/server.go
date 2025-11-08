@@ -24,6 +24,7 @@ func New(cfg *config.Config) *Server {
 
 func (s *Server) setupRoutes() {
 	s.mux.HandleFunc("/health", handlers.HealthHandler(s.config.Environment))
+	s.mux.HandleFunc("/api/guesses", handlers.GuessesHandler())
 
 	s.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
