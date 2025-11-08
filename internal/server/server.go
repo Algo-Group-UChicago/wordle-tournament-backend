@@ -25,14 +25,12 @@ func New(cfg *config.Config) *Server {
 func (s *Server) setupRoutes() {
 	s.mux.HandleFunc("/health", handlers.HealthHandler(s.config.Environment))
 
-	// Root endpoint
 	s.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintf(w, `{"message":"Wordle Tournament API","version":"1.0.0"}`)
 	})
 }
 
-// Start begins listening for HTTP requests
 func (s *Server) Start() error {
 	addr := ":" + s.config.Port
 	return http.ListenAndServe(addr, s.mux)

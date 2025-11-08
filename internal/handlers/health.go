@@ -5,13 +5,11 @@ import (
 	"net/http"
 )
 
-// HealthResponse represents the health check response
 type HealthResponse struct {
 	Status      string `json:"status"`
 	Environment string `json:"environment"`
 }
 
-// HealthHandler returns a handler for health checks
 func HealthHandler(environment string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		response := HealthResponse{
