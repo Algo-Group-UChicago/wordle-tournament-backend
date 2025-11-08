@@ -37,7 +37,7 @@ func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !validateTeamId(req.TeamId) {
-		http.Error(w, "Invalid team_id: " + req.TeamId, http.StatusUnauthorized)
+		http.Error(w, "Invalid team_id: "+req.TeamId, http.StatusUnauthorized)
 		return
 	}
 
@@ -140,4 +140,3 @@ func gradeGuess(guess, answer string) []string {
 
 	return hints
 }
-
