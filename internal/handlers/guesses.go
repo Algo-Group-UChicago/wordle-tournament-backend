@@ -3,7 +3,10 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"wordle-tournament-backend/internal/registry"
 )
+
+const NumTargetWords = 1000
 
 type GuessesRequest struct {
 	TeamId  string   `json:"team_id"`
@@ -29,17 +32,20 @@ func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
 	// extract GuessesRequest obj from json paylod
 	var req GuessesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		http.Error(w, "Invalid json body", http.StatusBadRequest)
 		return
 	}
 
 	if !validateTeamId(req.TeamId) {
-		http.Error(w, "Invalid team_id", http.StatusUnauthorized)
+		http.Error(w, "Invalid team_id: " + req.TeamId, http.StatusUnauthorized)
 		return
 	}
 
+	// could consolidate validation and guessing to optimize for performance,
+	// but security is a bigger concern for now so keeping them separate.
 	if !validateGuesses(req.Guesses) {
-
+		http.Error(w, "Invalid guesses", http.StatusBadRequest)
+		return
 	}
 
 	// Process the guesses (placeholder logic for now)
@@ -77,11 +83,20 @@ func validateTeamId(teamid string) bool {
 }
 
 func validateGuesses(guesses []string) bool {
+	// minimal validation checking for now
+	if len(guesses) != NumTargetWords {
+		return false
+	}
 
+	for _, guess := range guesses {
+		if !registry.IsInCorpus(guess) {
+			return false
+		}
+	}
+
+	return true
 }
 
-// gradeGuess compares a guess against the answer and returns hints for each letter position.
-// Returns a slice of strings where each element is one of: "correct", "present", or "absent"
 func gradeGuess(guess, answer string) []string {
 	if len(guess) != 5 || len(answer) != 5 {
 		return []string{"absent", "absent", "absent", "absent", "absent"}
