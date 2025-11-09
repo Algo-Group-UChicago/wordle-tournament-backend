@@ -27,7 +27,8 @@ func GuessesHandler() http.HandlerFunc {
 }
 
 func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
-	// might be prudent to move validation + grading function calling into
+	// might be prudent to move validation + grading calls
+	// to another function that only takes a GuessesRequest
 	var req GuessesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid json body", http.StatusBadRequest)
@@ -36,11 +37,6 @@ func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
 
 	if err := wordle.ValidateTeamId(req.TeamId); err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
-	}
-
-	if err := wordle.ValidateGuessesLength(req.Guesses); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 

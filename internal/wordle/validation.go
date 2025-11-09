@@ -24,14 +24,11 @@ func ValidateTeamId(teamid string) error {
 	return nil
 }
 
-func ValidateGuessesLength(guesses []string) error {
+func ValidateGuesses(guesses []string) error {
 	if len(guesses) != NumTargetWords {
 		return fmt.Errorf("%w: expected %d, got %d", ErrInvalidGuessLength, NumTargetWords, len(guesses))
 	}
-	return nil
-}
 
-func ValidateGuesses(guesses []string) error {
 	for _, guess := range guesses {
 		if err := validateGuess(guess); err != nil {
 			return err
