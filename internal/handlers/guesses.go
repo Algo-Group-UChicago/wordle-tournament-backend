@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"wordle-tournament-backend/internal/common"
 	"wordle-tournament-backend/internal/corpus"
 	"wordle-tournament-backend/internal/wordle"
 )
@@ -49,8 +50,10 @@ func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// answers is first NumTargetWords of possible answers
+	// will eventually be dependent on the team's id
 	possibleAnswers := corpus.GetGradingAnswerKey()
-	answers := possibleAnswers[:wordle.NumTargetWords]
+	answers := possibleAnswers[:common.NumTargetWords]
 
 	response := GuessesResponse{
 		Hints: wordle.GradeGuesses(req.Guesses, answers),

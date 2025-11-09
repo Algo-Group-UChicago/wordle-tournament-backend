@@ -8,8 +8,6 @@ import (
 	"wordle-tournament-backend/internal/corpus"
 )
 
-const NumTargetWords = 1000
-
 var (
 	ErrInvalidGuessLength = errors.New("invalid number of guesses")
 	ErrInvalidWordLength  = errors.New("word must be exactly 5 characters")
@@ -27,8 +25,8 @@ func ValidateTeamId(teamid string) error {
 }
 
 func ValidateGuesses(guesses []string) error {
-	if len(guesses) != NumTargetWords {
-		return fmt.Errorf("%w: expected %d, got %d", ErrInvalidGuessLength, NumTargetWords, len(guesses))
+	if len(guesses) != common.NumTargetWords {
+		return fmt.Errorf("%w: expected %d, got %d", ErrInvalidGuessLength, common.NumTargetWords, len(guesses))
 	}
 
 	for _, guess := range guesses {
@@ -40,12 +38,12 @@ func ValidateGuesses(guesses []string) error {
 }
 
 func validateGuess(guess string) error {
-	if len(guess) != common.WordLength {
-		return fmt.Errorf("%w: %s", ErrInvalidWordLength, guess)
-	}
-
 	if guess == common.DummyGuess {
 		return nil
+	}
+
+	if len(guess) != common.WordLength {
+		return fmt.Errorf("%w: %s", ErrInvalidWordLength, guess)
 	}
 
 	if !corpus.IsValidWord(guess) {

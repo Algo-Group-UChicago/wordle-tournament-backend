@@ -34,7 +34,6 @@ func GradeGuesses(guesses, answers []string) []string {
 }
 
 // grade a single guess and answer mirroring the rust algorithm
-// imo this impl is cumbersome to reason about
 func gradeGuessLogical(guess, answer string) string {
 	hint := []rune("XXXXX")
 	remainingChars := []rune(answer)
