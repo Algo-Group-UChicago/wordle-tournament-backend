@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 	"wordle-tournament-backend/internal/config"
-	"wordle-tournament-backend/internal/registry"
+	"wordle-tournament-backend/internal/dictionary"
 	"wordle-tournament-backend/internal/server"
 )
 
@@ -14,7 +14,7 @@ func main() {
 	log.Printf("Environment: %s", cfg.Environment)
 	log.Printf("Port: %s", cfg.Port)
 
-	registry.Initialize("corpus.txt", "possible_answers.txt")
+	dictionary.Initialize("corpus.txt", "possible_answers.txt")
 
 	srv := server.New(cfg)
 
