@@ -27,6 +27,7 @@ func GuessesHandler() http.HandlerFunc {
 }
 
 func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
+	// might be prudent to move validation + grading function calling into
 	var req GuessesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid json body", http.StatusBadRequest)
@@ -48,15 +49,8 @@ func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: Get answers for each guess and grade them
-	// For now, return placeholder hints
-	hints := make([]string, len(req.Guesses))
-	for i := range req.Guesses {
-		hints[i] = "absent,absent,absent,absent,absent"
-	}
-
 	response := GuessesResponse{
-		Hints: hints,
+		Hints: wordle.GradeGuesses(req.Guesses, []string{"HELLO"}),
 	}
 
 	w.Header().Set("Content-Type", "application/json")

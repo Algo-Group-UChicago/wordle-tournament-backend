@@ -14,6 +14,16 @@ var (
 	ErrInvalidTeamId      = errors.New("invalid team_id")
 )
 
+// TODO: Implement actual team validation logic.
+func ValidateTeamId(teamid string) error {
+	// Placeholder: always returns nil (valid)
+	// In production, this would check against a database or auth service
+	if teamid == "" {
+		return fmt.Errorf("%w: team_id cannot be empty", ErrInvalidTeamId)
+	}
+	return nil
+}
+
 func ValidateGuessesLength(guesses []string) error {
 	if len(guesses) != NumTargetWords {
 		return fmt.Errorf("%w: expected %d, got %d", ErrInvalidGuessLength, NumTargetWords, len(guesses))
@@ -21,7 +31,16 @@ func ValidateGuessesLength(guesses []string) error {
 	return nil
 }
 
-func ValidateGuess(guess string) error {
+func ValidateGuesses(guesses []string) error {
+	for _, guess := range guesses {
+		if err := validateGuess(guess); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateGuess(guess string) error {
 	if len(guess) != WordLength {
 		return fmt.Errorf("%w: %s", ErrInvalidWordLength, guess)
 	}
@@ -30,24 +49,5 @@ func ValidateGuess(guess string) error {
 		return fmt.Errorf("word not in corpus: %s", guess)
 	}
 
-	return nil
-}
-
-func ValidateGuesses(guesses []string) error {
-	for _, guess := range guesses {
-		if err := ValidateGuess(guess); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// TODO: Implement actual team validation logic.
-func ValidateTeamId(teamid string) error {
-	// Placeholder: always returns nil (valid)
-	// In production, this would check against a database or auth service
-	if teamid == "" {
-		return fmt.Errorf("%w: team_id cannot be empty", ErrInvalidTeamId)
-	}
 	return nil
 }

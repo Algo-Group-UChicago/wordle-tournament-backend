@@ -2,57 +2,62 @@ package wordle
 
 const WordLength = 5
 
-// GradeGuess evaluates a guess against the answer and returns a hint string.
-// The hint string is comma-separated with values: "correct", "present", or "absent".
-// Uses the same logic as the Rust implementation with a two-pass algorithm:
-// 1. First pass: mark all exact matches as "correct"
-// 2. Second pass: mark remaining characters as "present" if they exist in unseen pool
-func GradeGuess(guess, answer string) string {
-	// Validate word lengths
-	if len(guess) != WordLength || len(answer) != WordLength {
-		panic("guess and answer must be exactly 5 characters")
+// GradeGuesses takes two lists of guesses and answers and returns an array of hints.
+// Each hint is a 5-character string where:
+// - 'O' indicates a correct letter in the correct position
+// - '~' indicates a correct letter in the wrong position
+// - 'X' indicates a letter not in the answer
+func GradeGuesses(guesses, answers []string) []string {
+
+	// TODO: Remove panic before deploying to production
+	// Confirm guesses and answers are the same length
+	if len(guesses) != len(answers) {
+		panic("guesses and answers must be the same length")
 	}
 
-	// Initialize hint array with "absent"
-	hintArr := [WordLength]string{"absent", "absent", "absent", "absent", "absent"}
-	unseenPool := []rune{}
+	hints := make([]string, len(guesses))
+	for i := 0; i < len(guesses); i++ {
+		hints[i] = gradeGuessList(guesses[i], answers[i])
+	}
 
-	// Convert strings to rune slices for proper character handling
+	return hints
+}
+
+// grade a single guess and answer mirroring the rust algorithm
+// imo this impl is cumbersome to reason about
+func gradeGuessList(guess, answer string) string {
+	hint := []rune("XXXXX")
+	remainingChars := []rune(answer)
+
+	// Mark corrrectly placed characters and remove them from remainingChars
 	guessRunes := []rune(guess)
 	answerRunes := []rune(answer)
-
-	// Mark greens (correct position)
 	for i := 0; i < WordLength; i++ {
 		if guessRunes[i] == answerRunes[i] {
-			hintArr[i] = "correct"
-		} else {
-			unseenPool = append(unseenPool, answerRunes[i])
-		}
-	}
-
-	// Mark yellows (present but wrong position)
-	for i := 0; i < WordLength; i++ {
-		if hintArr[i] == "absent" {
-			// Check if this character exists in unseen pool
-			for j, unseenChar := range unseenPool {
-				if guessRunes[i] == unseenChar {
-					// Remove from unseen pool
-					unseenPool = append(unseenPool[:j], unseenPool[j+1:]...)
-					hintArr[i] = "present"
+			hint[i] = 'O'
+			// Remove this character from remainingChars
+			for j, char := range remainingChars {
+				if char == guessRunes[i] {
+					remainingChars = append(remainingChars[:j], remainingChars[j+1:]...)
 					break
 				}
 			}
 		}
 	}
 
-	// Convert hint array to comma-separated string
-	result := ""
-	for i, hint := range hintArr {
-		if i > 0 {
-			result += ","
+	// Go through remaining characters in guess
+	// If it exists in the list, mark "~" and remove from list, otherwise leave as "X"
+	for i := 0; i < WordLength; i++ {
+		if hint[i] == 'X' { // Only check characters not already marked as correct
+			for j, char := range remainingChars {
+				if guessRunes[i] == char {
+					hint[i] = '~'
+					remainingChars = append(remainingChars[:j], remainingChars[j+1:]...)
+					break
+				}
+			}
 		}
-		result += hint
 	}
 
-	return result
+	return string(hint)
 }

@@ -39,7 +39,7 @@ func loadDictionary(filepath string) map[string]struct{} {
 	defer file.Close()
 
 	wordSet := make(map[string]struct{})
-	scanner := bufio.Scanner(file)
+	scanner := bufio.NewScanner(file)
 
 	for scanner.Scan() {
 		word := scanner.Text()
