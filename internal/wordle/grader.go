@@ -20,6 +20,8 @@ func GradeGuesses(guesses, answers []string) []string {
 
 	hints := make([]string, len(guesses))
 	for i := 0; i < len(guesses); i++ {
+		// if we receive a DummyGuess from middleware
+		// then the guess is automatically correct
 		if guesses[i] == DummyGuess {
 			hints[i] = strings.Repeat("O", WordLength)
 		} else {

@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"wordle-tournament-backend/internal/corpus"
 	"wordle-tournament-backend/internal/wordle"
 )
 
@@ -48,8 +49,11 @@ func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
 	// 	return
 	// }
 
+	possibleAnswers := corpus.GetGradingAnswerKey()
+	answers := possibleAnswers[:wordle.NumTargetWords]
+
 	response := GuessesResponse{
-		Hints: wordle.GradeGuesses(req.Guesses, []string{"afoul", "after"}),
+		Hints: wordle.GradeGuesses(req.Guesses, answers),
 	}
 
 	w.Header().Set("Content-Type", "application/json")

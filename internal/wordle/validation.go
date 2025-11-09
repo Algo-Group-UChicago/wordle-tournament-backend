@@ -6,7 +6,7 @@ import (
 	"wordle-tournament-backend/internal/corpus"
 )
 
-const NumTargetWords = 2
+const NumTargetWords = 1000
 
 var (
 	ErrInvalidGuessLength = errors.New("invalid number of guesses")

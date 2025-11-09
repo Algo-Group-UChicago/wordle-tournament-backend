@@ -22,8 +22,6 @@ RUN apk add ca-certificates tzdata
 WORKDIR /app
 
 COPY --from=builder /app/main .
-COPY --from=builder /app/corpus.txt .
-COPY --from=builder /app/possible_answers.txt .
 
 EXPOSE 8080
 
