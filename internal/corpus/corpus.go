@@ -1,14 +1,20 @@
 package corpus
 
 import (
-	"bufio"
+	_ "embed"
 	"log"
-	"os"
+	"strings"
 	"sync"
 )
 
-const CorpusFile = "corpus.txt"
-const AnswerKeyFile = "possible_answers.txt"
+// Embed the corpus files directly into the binary at compile time
+// Files are located in the project root, so we use ../../ to go up from internal/corpus/
+//
+//go:embed corpus.txt
+var corpusData string
+
+//go:embed possible_answers.txt
+var answersData string
 
 var (
 	corpus          map[string]struct{}
@@ -17,20 +23,12 @@ var (
 )
 
 func GetCorpus() map[string]struct{} {
-	once.Do(func() {
-		corpus = loadDictionary(CorpusFile)
-		possibleAnswers = loadDictionary(AnswerKeyFile)
-		log.Printf("Loaded %d words from corpus and %d possible answers", len(corpus), len(possibleAnswers))
-	})
+	once.Do(initializeMaps)
 	return corpus
 }
 
 func GetGradingAnswerKey() map[string]struct{} {
-	once.Do(func() {
-		corpus = loadDictionary("corpus.txt")
-		possibleAnswers = loadDictionary("possible_answers.txt")
-		log.Printf("Loaded %d words from corpus and %d possible answers", len(corpus), len(possibleAnswers))
-	})
+	once.Do(initializeMaps)
 	return possibleAnswers
 }
 
@@ -39,23 +37,24 @@ func IsValidWord(word string) bool {
 	return exists
 }
 
-func loadDictionary(filepath string) map[string]struct{} {
-	file, err := os.Open(filepath)
-	if err != nil {
-		log.Fatalf("Failed to open word file %s: %v", filepath, err)
-	}
-	defer file.Close()
+// initializeMaps loads both corpus and answers from embedded data
+func initializeMaps() {
+	corpus = loadFromString(corpusData)
+	possibleAnswers = loadFromString(answersData)
+	log.Printf("Loaded %d words from corpus and %d possible answers", len(corpus), len(possibleAnswers))
+}
 
+// loadFromString parses embedded string data into a word set
+func loadFromString(data string) map[string]struct{} {
 	wordSet := make(map[string]struct{})
-	scanner := bufio.NewScanner(file)
 
-	for scanner.Scan() {
-		word := scanner.Text()
-		wordSet[word] = struct{}{} // empty struct takes 0 bytes
-	}
-
-	if err := scanner.Err(); err != nil {
-		log.Fatalf("Error reading word file %s: %v", filepath, err)
+	// Split by newlines and add each word
+	lines := strings.Split(data, "\n")
+	for _, word := range lines {
+		word = strings.TrimSpace(word) // Remove any whitespace
+		if word != "" {                // Skip empty lines
+			wordSet[word] = struct{}{}
+		}
 	}
 
 	return wordSet
