@@ -3,6 +3,8 @@ package wordle
 import (
 	"errors"
 	"fmt"
+
+	"wordle-tournament-backend/internal/common"
 	"wordle-tournament-backend/internal/corpus"
 )
 
@@ -38,8 +40,12 @@ func ValidateGuesses(guesses []string) error {
 }
 
 func validateGuess(guess string) error {
-	if len(guess) != WordLength {
+	if len(guess) != common.WordLength {
 		return fmt.Errorf("%w: %s", ErrInvalidWordLength, guess)
+	}
+
+	if guess == common.DummyGuess {
+		return nil
 	}
 
 	if !corpus.IsValidWord(guess) {

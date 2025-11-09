@@ -39,15 +39,15 @@ func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// if err := wordle.ValidateTeamId(req.TeamId); err != nil {
-	// 	http.Error(w, err.Error(), http.StatusUnauthorized)
-	// 	return
-	// }
+	if err := wordle.ValidateTeamId(req.TeamId); err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
 
-	// if err := wordle.ValidateGuesses(req.Guesses); err != nil {
-	// 	http.Error(w, err.Error(), http.StatusBadRequest)
-	// 	return
-	// }
+	if err := wordle.ValidateGuesses(req.Guesses); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
 	possibleAnswers := corpus.GetGradingAnswerKey()
 	answers := possibleAnswers[:wordle.NumTargetWords]

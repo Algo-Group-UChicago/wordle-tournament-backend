@@ -2,11 +2,9 @@ package corpus
 
 import (
 	"testing"
-)
 
-// using wordle.WordleLength directly creates an import cycle
-// open to suggestions here
-const expectedWordLength = 5
+	"wordle-tournament-backend/internal/common"
+)
 
 func TestCorpusLoads(t *testing.T) {
 	corpus := GetCorpus()
@@ -24,8 +22,8 @@ func TestAllWordsCorrectLength(t *testing.T) {
 	corpus := GetCorpus()
 
 	for word := range corpus {
-		if len(word) != expectedWordLength {
-			t.Errorf("Word '%s' is not %d letters", word, expectedWordLength)
+		if len(word) != common.WordLength {
+			t.Errorf("Word '%s' is not %d letters", word, common.WordLength)
 		}
 	}
 }
