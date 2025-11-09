@@ -1,6 +1,9 @@
 package wordle
 
+import "strings"
+
 const WordLength = 5
+const DummyGuess = "imagine guessing more than 5 letters"
 
 // GradeGuesses takes two lists of guesses and answers and returns an array of hints.
 // Each hint is a 5-character string where:
@@ -17,7 +20,11 @@ func GradeGuesses(guesses, answers []string) []string {
 
 	hints := make([]string, len(guesses))
 	for i := 0; i < len(guesses); i++ {
-		hints[i] = gradeGuessList(guesses[i], answers[i])
+		if guesses[i] == DummyGuess {
+			hints[i] = strings.Repeat("O", WordLength)
+		} else {
+			hints[i] = gradeGuessList(guesses[i], answers[i])
+		}
 	}
 
 	return hints

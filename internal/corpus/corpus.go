@@ -1,4 +1,4 @@
-package dictionary
+package corpus
 
 import (
 	"bufio"
@@ -7,27 +7,35 @@ import (
 	"sync"
 )
 
+const CorpusFile = "corpus.txt"
+const AnswerKeyFile = "possible_answers.txt"
+
 var (
 	corpus          map[string]struct{}
 	possibleAnswers map[string]struct{}
 	once            sync.Once
 )
 
-func Initialize(corpusPath, answersPath string) {
+func GetCorpus() map[string]struct{} {
 	once.Do(func() {
-		corpus = loadDictionary(corpusPath)
-		possibleAnswers = loadDictionary(answersPath)
+		corpus = loadDictionary(CorpusFile)
+		possibleAnswers = loadDictionary(AnswerKeyFile)
 		log.Printf("Loaded %d words from corpus and %d possible answers", len(corpus), len(possibleAnswers))
 	})
+	return corpus
 }
 
-func IsInCorpus(word string) bool {
-	_, exists := corpus[word]
-	return exists
+func GetGradingAnswerKey() map[string]struct{} {
+	once.Do(func() {
+		corpus = loadDictionary("corpus.txt")
+		possibleAnswers = loadDictionary("possible_answers.txt")
+		log.Printf("Loaded %d words from corpus and %d possible answers", len(corpus), len(possibleAnswers))
+	})
+	return possibleAnswers
 }
 
-func IsValidAnswer(word string) bool {
-	_, exists := possibleAnswers[word]
+func IsValidWord(word string) bool {
+	_, exists := GetCorpus()[word]
 	return exists
 }
 

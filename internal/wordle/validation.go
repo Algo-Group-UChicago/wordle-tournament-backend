@@ -3,10 +3,10 @@ package wordle
 import (
 	"errors"
 	"fmt"
-	"wordle-tournament-backend/internal/dictionary"
+	"wordle-tournament-backend/internal/corpus"
 )
 
-const NumTargetWords = 1000
+const NumTargetWords = 2
 
 var (
 	ErrInvalidGuessLength = errors.New("invalid number of guesses")
@@ -42,7 +42,7 @@ func validateGuess(guess string) error {
 		return fmt.Errorf("%w: %s", ErrInvalidWordLength, guess)
 	}
 
-	if !dictionary.IsInCorpus(guess) {
+	if !corpus.IsValidWord(guess) {
 		return fmt.Errorf("word not in corpus: %s", guess)
 	}
 
