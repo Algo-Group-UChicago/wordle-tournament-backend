@@ -38,19 +38,14 @@ func gradeGuessLogical(guess, answer string) string {
 	hint := []rune("XXXXX")
 	remainingChars := []rune(answer)
 
-	// Mark corrrectly placed characters and remove them from remainingChars
 	guessRunes := []rune(guess)
 	answerRunes := []rune(answer)
+
+	// Mark correctly placed characters and remove them from remainingChars
 	for i := 0; i < common.WordLength; i++ {
 		if guessRunes[i] == answerRunes[i] {
 			hint[i] = 'O'
-			// Remove this character from remainingChars
-			for j, char := range remainingChars {
-				if char == guessRunes[i] {
-					remainingChars = append(remainingChars[:j], remainingChars[j+1:]...)
-					break
-				}
-			}
+			removeFirstOccurrence(&remainingChars, guessRunes[i])
 		}
 	}
 
@@ -58,15 +53,22 @@ func gradeGuessLogical(guess, answer string) string {
 	// If it exists in the list, mark "~" and remove from list, otherwise leave as "X"
 	for i := 0; i < common.WordLength; i++ {
 		if hint[i] == 'X' { // Only check characters not already marked as correct
-			for j, char := range remainingChars {
-				if guessRunes[i] == char {
-					hint[i] = '~'
-					remainingChars = append(remainingChars[:j], remainingChars[j+1:]...)
-					break
-				}
+			if removeFirstOccurrence(&remainingChars, guessRunes[i]) {
+				hint[i] = '~'
 			}
 		}
 	}
 
 	return string(hint)
+}
+
+func removeFirstOccurrence(slice *[]rune, target rune) bool {
+	s := *slice
+	for i, char := range s {
+		if char == target {
+			*slice = append(s[:i], s[i+1:]...)
+			return true
+		}
+	}
+	return false
 }
