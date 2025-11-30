@@ -14,15 +14,12 @@ import (
 func GradeGuesses(guesses, answers []string) []string {
 
 	// TODO: Remove panic before deploying to production
-	// Confirm guesses and answers are the same length
 	if len(guesses) != len(answers) {
 		panic("guesses and answers must be the same length")
 	}
 
 	hints := make([]string, len(guesses))
 	for i := 0; i < len(guesses); i++ {
-		// if we receive a DummyGuess from middleware
-		// then the guess is automatically correct
 		if guesses[i] == common.DummyGuess {
 			hints[i] = strings.Repeat("O", common.WordLength)
 		} else {
@@ -33,7 +30,7 @@ func GradeGuesses(guesses, answers []string) []string {
 	return hints
 }
 
-// grade a single guess and answer mirroring the rust algorithm
+// Grade a single guess and answer mirroring the rust algorithm
 func gradeGuessLogical(guess, answer string) string {
 	hint := []rune("XXXXX")
 	remainingChars := []rune(answer)
@@ -41,19 +38,18 @@ func gradeGuessLogical(guess, answer string) string {
 	guessRunes := []rune(guess)
 	answerRunes := []rune(answer)
 
-	// Mark correctly placed characters and remove them from remainingChars
+	// Mark correctly placed characters
 	for i := 0; i < common.WordLength; i++ {
 		if guessRunes[i] == answerRunes[i] {
 			hint[i] = 'O'
-			removeFirstOccurrence(&remainingChars, guessRunes[i])
+			tryRemoveFirst(&remainingChars, guessRunes[i])
 		}
 	}
 
-	// Go through remaining characters in guess
-	// If it exists in the list, mark "~" and remove from list, otherwise leave as "X"
+	// Mark misplaced characters
 	for i := 0; i < common.WordLength; i++ {
-		if hint[i] == 'X' { // Only check characters not already marked as correct
-			if removeFirstOccurrence(&remainingChars, guessRunes[i]) {
+		if hint[i] == 'X' {
+			if tryRemoveFirst(&remainingChars, guessRunes[i]) {
 				hint[i] = '~'
 			}
 		}
@@ -62,7 +58,7 @@ func gradeGuessLogical(guess, answer string) string {
 	return string(hint)
 }
 
-func removeFirstOccurrence(slice *[]rune, target rune) bool {
+func tryRemoveFirst(slice *[]rune, target rune) bool {
 	s := *slice
 	for i, char := range s {
 		if char == target {

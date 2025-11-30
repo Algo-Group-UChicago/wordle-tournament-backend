@@ -29,11 +29,7 @@ func GuessesHandler() http.HandlerFunc {
 }
 
 func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
-	// might be prudent to move validation + grading calls
-	// to another function that only takes a GuessesRequest
-
-	// TODO: uppercase guesses will FAIL.
-	// what is the expected behavior
+	// TODO: uppercase guesses will FAIL
 	var req GuessesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid json body", http.StatusBadRequest)
@@ -50,8 +46,7 @@ func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// answers is first NumTargetWords of possible answers
-	// will eventually be dependent on the team's id
+	// TODO: make answers dependent on a team's id
 	possibleAnswers := corpus.GetGradingAnswerKey()
 	answers := possibleAnswers[:common.NumTargetWords]
 
