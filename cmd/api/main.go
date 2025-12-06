@@ -7,15 +7,12 @@ import (
 )
 
 func main() {
-	cfg := config.Load()
-
 	log.Printf("Starting Wordle Tournament API...")
-	log.Printf("Environment: %s", cfg.Environment)
-	log.Printf("Port: %s", cfg.Port)
+	log.Printf("Port: %s", config.Port)
 
-	srv := server.New(cfg)
+	srv := server.New()
 
-	log.Printf("Server listening on :%s", cfg.Port)
+	log.Printf("Server listening on :%s", config.Port)
 	if err := srv.Start(); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}

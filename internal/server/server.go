@@ -8,14 +8,12 @@ import (
 )
 
 type Server struct {
-	config *config.Config
-	mux    *http.ServeMux
+	mux *http.ServeMux
 }
 
-func New(cfg *config.Config) *Server {
+func New() *Server {
 	s := &Server{
-		config: cfg,
-		mux:    http.NewServeMux(),
+		mux: http.NewServeMux(),
 	}
 
 	s.setupRoutes()
@@ -23,7 +21,7 @@ func New(cfg *config.Config) *Server {
 }
 
 func (s *Server) setupRoutes() {
-	s.mux.HandleFunc("/health", handlers.HealthHandler(s.config.Environment))
+	s.mux.HandleFunc("/health", handlers.HealthHandler())
 	s.mux.HandleFunc("/api/guesses", handlers.GuessesHandler())
 
 	s.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -33,6 +31,6 @@ func (s *Server) setupRoutes() {
 }
 
 func (s *Server) Start() error {
-	addr := ":" + s.config.Port
+	addr := ":" + config.Port
 	return http.ListenAndServe(addr, s.mux)
 }

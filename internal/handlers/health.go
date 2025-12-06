@@ -10,11 +10,10 @@ type HealthResponse struct {
 	Environment string `json:"environment"`
 }
 
-func HealthHandler(environment string) http.HandlerFunc {
+func HealthHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		response := HealthResponse{
 			Status:      "healthy",
-			Environment: environment,
 		}
 
 		w.Header().Set("Content-Type", "application/json")
