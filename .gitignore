@@ -1,0 +1,42 @@
+# Binaries
+main
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Configuration files (endpoints/settings only - NO credentials)
+.config.*
+!.config.example
+
+# Never commit actual environment files with potential secrets
+.env
+.env.*
+
+# Build artifacts
+*.test
+*.out
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+
+# Go
+vendor/
+
+# LocalStack data
+localstack-data/
+
+# Prototype
+prototype/
+
+# Claude notes
+claude.md
+
+# don't wanna expose sol
+example.ipynb
