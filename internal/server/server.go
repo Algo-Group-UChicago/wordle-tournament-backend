@@ -3,7 +3,6 @@ package server
 import (
 	"fmt"
 	"net/http"
-	"wordle-tournament-backend/internal/config"
 	"wordle-tournament-backend/internal/handlers"
 )
 
@@ -30,7 +29,7 @@ func (s *Server) setupRoutes() {
 	})
 }
 
-func (s *Server) Start() error {
-	addr := ":" + config.Port
+func (s *Server) Start(port string) error {
+	addr := ":" + port
 	return http.ListenAndServe(addr, s.mux)
 }

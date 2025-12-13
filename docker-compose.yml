@@ -1,0 +1,54 @@
+services:
+  # Local Dynamo Container
+  dynamodb-local:
+    image: amazon/dynamodb-local
+    ports:
+      - "8000:8000"
+    command: "-jar DynamoDBLocal.jar -sharedDb"
+
+  # Container to create tables inside Dynamo instance
+  setup-local-db:
+    image: amazon/aws-cli
+    depends_on:
+      - dynamodb-local
+    environment:
+      - AWS_ACCESS_KEY_ID=dummy
+      - AWS_SECRET_ACCESS_KEY=dummy
+      - AWS_DEFAULT_REGION=us-east-1
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        echo "Creating Scores table..."
+        aws dynamodb create-table \
+          --table-name Scores \
+          --attribute-definitions AttributeName=team_id,AttributeType=S \
+          --key-schema AttributeName=team_id,KeyType=HASH \
+          --billing-mode PAY_PER_REQUEST \
+          --endpoint-url http://dynamodb-local:8000 || echo "Scores table may already exist"
+
+        echo "Creating ActiveRuns table..."
+        aws dynamodb create-table \
+          --table-name ActiveRuns \
+          --attribute-definitions \
+            AttributeName=team_id,AttributeType=S \
+            AttributeName=run_id,AttributeType=S \
+          --key-schema \
+            AttributeName=team_id,KeyType=HASH \
+            AttributeName=run_id,KeyType=RANGE \
+          --billing-mode PAY_PER_REQUEST \
+          --endpoint-url http://dynamodb-local:8000 || echo "ActiveRuns table may already exist"
+
+        echo "DynamoDB setup complete"
+
+  api:
+    build: .
+    environment:
+      - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+
+      - AWS_ACCESS_KEY_ID=dummy
+      - AWS_SECRET_ACCESS_KEY=dummy
+      - AWS_REGION=us-east-1
+    depends_on:
+      - setup-local-db
+    ports:
+      - "8080:8080"
