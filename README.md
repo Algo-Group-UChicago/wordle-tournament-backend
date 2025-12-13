@@ -21,8 +21,7 @@ curl http://localhost:8080/health
 ### Verify DynamoDB tables:
 ```bash
 aws dynamodb list-tables \
-  --endpoint-url http://localhost:8000 \
-  --region us-east-1
+  --endpoint-url http://localhost:8000
 ```
 
 ### Stop all services:
