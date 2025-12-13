@@ -18,6 +18,11 @@ docker-compose up --build
 curl http://localhost:8080/health
 ```
 
+### Initialize env vars
+```bash
+source scripts/local-env-setup.sh
+```
+
 ### Verify DynamoDB tables:
 ```bash
 aws dynamodb list-tables \
