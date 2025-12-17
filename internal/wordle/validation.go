@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"wordle-tournament-backend/internal/common"
-	"wordle-tournament-backend/internal/corpus"
+	"wordle-tournament-backend/internal/wordle/corpus"
 )
 
 var (
