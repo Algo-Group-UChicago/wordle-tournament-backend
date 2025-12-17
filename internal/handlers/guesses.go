@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"wordle-tournament-backend/internal/common"
-	"wordle-tournament-backend/internal/corpus"
 	"wordle-tournament-backend/internal/wordle"
+	"wordle-tournament-backend/internal/wordle/corpus"
 )
 
 type GuessesRequest struct {
