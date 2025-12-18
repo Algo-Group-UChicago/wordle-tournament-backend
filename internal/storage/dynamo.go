@@ -16,11 +16,17 @@ var (
 	dynamoClient *dynamodb.Client
 )
 
+// getDynamoClient returns the shared DynamoDB client, initializing it
+// lazily on the first call using initializeDynamo. Subsequent calls return
+// the same client instance.
 func getDynamoClient() *dynamodb.Client {
 	dynamoOnce.Do(initializeDynamo)
 	return dynamoClient
 }
 
+// initializeDynamo initializes the DynamoDB client from environment variables.
+// It reads DYNAMODB_ENDPOINT (required) and AWS_REGION (defaults to us-east-1),
+// then creates a client configured to use the specified endpoint.
 func initializeDynamo() {
 	endpoint := os.Getenv("DYNAMODB_ENDPOINT")
 	if endpoint == "" {

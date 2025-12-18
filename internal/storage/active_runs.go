@@ -26,6 +26,7 @@ type RoundState struct {
 	Answer     string `json:"answer" dynamodbav:"answer"`
 }
 
+// ActiveRunItem maps (team_id, run_id) to a list of RoundState entries with TTL.
 type ActiveRunItem struct {
 	TeamID string       `dynamodbav:"team_id"`
 	RunID  string       `dynamodbav:"run_id"`
@@ -33,10 +34,13 @@ type ActiveRunItem struct {
 	TTL    int64        `dynamodbav:"ttl"`
 }
 
+// createDefaultRounds returns a slice of RoundState entries, each containing
+// a unique randomly selected answer from the corpus.
 func createDefaultRounds() []RoundState {
 	possibleAnswers := corpus.GetGradingAnswerKey()
 
 	// rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	// Creates identical rounds for each run
 	rng := rand.New(rand.NewSource(1))
 	selected := make(map[string]bool)
 	rounds := make([]RoundState, 0, common.NumTargetWords)
@@ -58,6 +62,12 @@ func createDefaultRounds() []RoundState {
 	return rounds
 }
 
+// CreateDefaultActiveRun creates a new ActiveRuns entry in DynamoDB for the given
+// team_id and run_id. The entry contains a list of RoundState entries, each with
+// a unique randomly selected answer from the corpus. The item is configured with
+// a TTL that expires after ActiveRunTTL duration.
+//
+// Returns an error if marshaling or writing to DynamoDB fails.
 func CreateDefaultActiveRun(teamID, runID string) error {
 	ctx := context.Background()
 
