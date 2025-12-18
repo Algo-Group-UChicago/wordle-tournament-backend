@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
@@ -13,7 +14,10 @@ import (
 	"wordle-tournament-backend/internal/wordle/corpus"
 )
 
-const activeRunsTableName = "ActiveRuns"
+const (
+	activeRunsTableName = "ActiveRuns"
+	ActiveRunTTL        = 10 * time.Minute
+)
 
 // RoundState represents a single Wordle game within a run.
 type RoundState struct {
@@ -26,6 +30,7 @@ type ActiveRunItem struct {
 	TeamID string       `dynamodbav:"team_id"`
 	RunID  string       `dynamodbav:"run_id"`
 	Rounds []RoundState `dynamodbav:"rounds"`
+	TTL    int64        `dynamodbav:"ttl"`
 }
 
 func createDefaultRounds() []RoundState {
@@ -62,6 +67,7 @@ func CreateDefaultActiveRun(teamID, runID string) error {
 		TeamID: teamID,
 		RunID:  runID,
 		Rounds: createDefaultRounds(),
+		TTL:    time.Now().Add(ActiveRunTTL).Unix(),
 	}
 
 	av, err := attributevalue.MarshalMap(item)
