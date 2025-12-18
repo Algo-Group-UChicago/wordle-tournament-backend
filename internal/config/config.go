@@ -1,6 +1,9 @@
 package config
 
-import "os"
+import (
+	"os"
+	"sync"
+)
 
 type Config struct {
 	Port             string
@@ -8,8 +11,20 @@ type Config struct {
 	DynamoDBEndpoint string
 }
 
-func Load() Config {
-	return Config{
+var (
+	cfg  Config
+	once sync.Once
+)
+
+// Get returns the application configuration, loading it from environment
+// variables on the first call. Subsequent calls return the same cached config.
+func Get() Config {
+	once.Do(initializeConfig)
+	return cfg
+}
+
+func initializeConfig() {
+	cfg = Config{
 		Port:             getEnv("PORT", "8080"),
 		Region:           getEnv("AWS_REGION", "us-east-1"),
 		DynamoDBEndpoint: getEnv("DYNAMODB_ENDPOINT", ""),
