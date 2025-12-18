@@ -3,10 +3,14 @@ package storage
 import (
 	"context"
 	"fmt"
+	"math/rand"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+
+	"wordle-tournament-backend/internal/common"
+	"wordle-tournament-backend/internal/wordle/corpus"
 )
 
 const activeRunsTableName = "ActiveRuns"
@@ -24,19 +28,43 @@ type ActiveRunItem struct {
 	Rounds []RoundState `dynamodbav:"rounds"`
 }
 
-// CreateBlankActiveRun creates an ActiveRuns row with an empty rounds list.
-func CreateBlankActiveRun(ctx context.Context, teamID, runID string) error {
-	if err != nil {
-		return err
+func createDefaultRounds() []RoundState {
+	possibleAnswers := corpus.GetGradingAnswerKey()
+
+	// rng := rand.New(rand.NewSource(time.Now().UnixNano()))
+	rng := rand.New(rand.NewSource(1))
+	selected := make(map[string]bool)
+	rounds := make([]RoundState, 0, common.NumTargetWords)
+
+	for len(rounds) < common.NumTargetWords {
+		idx := rng.Intn(len(possibleAnswers))
+		answer := possibleAnswers[idx]
+
+		if !selected[answer] {
+			selected[answer] = true
+			rounds = append(rounds, RoundState{
+				Solved:     false,
+				NumGuesses: 0,
+				Answer:     answer,
+			})
+		}
 	}
 
-	blank_item := ActiveRunItem{
+	return rounds
+}
+
+func CreateDefaultActiveRun(teamID, runID string) error {
+	ctx := context.Background()
+
+	client := getDynamoClient()
+
+	item := ActiveRunItem{
 		TeamID: teamID,
 		RunID:  runID,
-		Rounds: []RoundState{},
+		Rounds: createDefaultRounds(),
 	}
 
-	av, err := attributevalue.MarshalMap(blank_item)
+	av, err := attributevalue.MarshalMap(item)
 	if err != nil {
 		return fmt.Errorf("marshal ActiveRuns item: %w", err)
 	}
