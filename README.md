@@ -13,6 +13,16 @@ A Go HTTP API for running Wordle bot tournaments.
 docker-compose up --build
 ```
 
+### Stop all services:
+```bash
+docker-compose down
+```
+
+### Clean slate (remove persisted data):
+```bash
+docker-compose down -v
+```
+
 ### Test the API:
 ```bash
 curl http://localhost:8080/health
@@ -23,20 +33,22 @@ curl http://localhost:8080/health
 source scripts/local-env-setup.sh
 ```
 
-### Verify DynamoDB tables:
+### Sample Call to /start
+```bash
+curl -X POST http://localhost:8080/start \
+  -H "Content-Type: application/json" \
+  -d '{"team_id": "TEST"}'
+```
+
+### View DynamoDB Entires
+```bash
+aws dynamodb scan --table-name ActiveRuns --endpoint-url http://localhost:8000 --output json
+```
+
+### List DynamoDB tables:
 ```bash
 aws dynamodb list-tables \
   --endpoint-url http://localhost:8000
-```
-
-### Stop all services:
-```bash
-docker-compose down
-```
-
-### Clean slate (remove persisted data):
-```bash
-docker-compose down -v
 ```
 
 ## Running Tests
