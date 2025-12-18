@@ -26,8 +26,7 @@ func getDynamoClient() *dynamodb.Client {
 }
 
 // initializeDynamo initializes the DynamoDB client from configuration.
-// It uses the DynamoDBEndpoint and Region from the config package,
-// then creates a client configured to use the specified endpoint.
+// it is only ever run once.
 func initializeDynamo() {
 	cfg := config.Get()
 	if cfg.DynamoDBEndpoint == "" {
