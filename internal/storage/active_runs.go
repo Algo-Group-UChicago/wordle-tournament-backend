@@ -19,39 +19,39 @@ const (
 	ActiveRunTTL        = 10 * time.Minute
 )
 
-// RoundState represents a single Wordle game within a run.
-type RoundState struct {
+// GameState represents a single Wordle game within a run.
+type GameState struct {
 	Solved     bool   `json:"solved" dynamodbav:"solved"`
 	NumGuesses int    `json:"num_guesses" dynamodbav:"num_guesses"`
 	Answer     string `json:"answer" dynamodbav:"answer"`
 }
 
-// ActiveRunItem maps (team_id, run_id) to a list of RoundState entries with TTL.
+// ActiveRunItem maps (team_id, run_id) to a list of GameState entries with TTL.
 type ActiveRunItem struct {
-	TeamID string       `dynamodbav:"team_id"`
-	RunID  string       `dynamodbav:"run_id"`
-	Rounds []RoundState `dynamodbav:"rounds"`
-	TTL    int64        `dynamodbav:"ttl"`
+	TeamID string      `dynamodbav:"team_id"`
+	RunID  string      `dynamodbav:"run_id"`
+	Games  []GameState `dynamodbav:"games"`
+	TTL    int64       `dynamodbav:"ttl"`
 }
 
-// createDefaultRounds returns a slice of RoundState entries, each containing
+// createDefaultGames returns a slice of GameState entries, each containing
 // a unique randomly selected answer from the corpus.
-func createDefaultRounds() []RoundState {
+func createDefaultGameStates() []GameState {
 	possibleAnswers := corpus.GetGradingAnswerKey()
 
 	// rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	// Creates identical rounds for each run
+	// Creates identical games for each run
 	rng := rand.New(rand.NewSource(1))
 	selected := make(map[string]bool)
-	rounds := make([]RoundState, 0, common.NumTargetWords)
+	games := make([]GameState, 0, common.NumTargetWords)
 
-	for len(rounds) < common.NumTargetWords {
+	for len(games) < common.NumTargetWords {
 		idx := rng.Intn(len(possibleAnswers))
 		answer := possibleAnswers[idx]
 
 		if !selected[answer] {
 			selected[answer] = true
-			rounds = append(rounds, RoundState{
+			games = append(games, GameState{
 				Solved:     false,
 				NumGuesses: 0,
 				Answer:     answer,
@@ -59,11 +59,11 @@ func createDefaultRounds() []RoundState {
 		}
 	}
 
-	return rounds
+	return games
 }
 
 // CreateDefaultActiveRun creates a new ActiveRuns entry in DynamoDB for the given
-// team_id and run_id. The entry contains a list of RoundState entries, each with
+// team_id and run_id. The entry contains a list of GameState entries, each with
 // a unique randomly selected answer from the corpus. The item is configured with
 // a TTL that expires after ActiveRunTTL duration.
 //
@@ -76,7 +76,7 @@ func CreateDefaultActiveRun(teamID, runID string) error {
 	item := ActiveRunItem{
 		TeamID: teamID,
 		RunID:  runID,
-		Rounds: createDefaultRounds(),
+		Games:  createDefaultGameStates(),
 		TTL:    time.Now().Add(ActiveRunTTL).Unix(),
 	}
 
