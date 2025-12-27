@@ -39,9 +39,7 @@ type ActiveRunItem struct {
 func createDefaultGameStates() []GameState {
 	possibleAnswers := corpus.GetGradingAnswerKey()
 
-	// rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	// Creates identical games for each run
-	rng := rand.New(rand.NewSource(1))
+	rng := rand.New(rand.NewSource(common.GetSeed()))
 	selected := make(map[string]bool)
 	games := make([]GameState, 0, common.NumTargetWords)
 
@@ -104,7 +102,7 @@ func GetActiveRun(teamID, runID string) (*ActiveRunItem, error) {
 	}
 
 	if result.Item == nil {
-		return nil, fmt.Errorf("ActiveRuns item not found for team_id=%s, run_id=%s", teamID, runID)
+		return nil, fmt.Errorf("run expired or not found for team_id=%s, run_id=%s", teamID, runID)
 	}
 
 	var item ActiveRunItem

@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"wordle-tournament-backend/internal/common"
 	"wordle-tournament-backend/internal/storage"
 	"wordle-tournament-backend/internal/wordle"
@@ -40,8 +41,13 @@ func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := wordle.ValidateTeamId(req.TeamId); err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+	if req.TeamId == "" {
+		http.Error(w, "team_id cannot be empty", http.StatusBadRequest)
+		return
+	}
+
+	if req.RunId == "" {
+		http.Error(w, "run_id cannot be empty", http.StatusBadRequest)
 		return
 	}
 
@@ -50,11 +56,14 @@ func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// No validation on whether team_id + run_id are valid
-	// TODO: Add team_id + run_id validation. Illegal values currently return a 500 error.
 	activeRun, err := storage.GetActiveRun(req.TeamId, req.RunId)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		// Must distinguish between (team_id, run_id) being invalid and network issues causing the request to fail.
+		statusCode := http.StatusInternalServerError
+		if strings.Contains(err.Error(), "expired or not found") {
+			statusCode = http.StatusBadRequest
+		}
+		http.Error(w, err.Error(), statusCode)
 		return
 	}
 
