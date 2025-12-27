@@ -138,3 +138,29 @@ func PutActiveRun(activeRun *ActiveRunItem) error {
 
 	return nil
 }
+
+// RemoveActiveRun deletes an ActiveRuns item from DynamoDB by team_id and run_id.
+// Returns an error if the key marshaling or DeleteItem operation fails.
+func RemoveActiveRun(teamID, runID string) error {
+	ctx := context.Background()
+
+	client := getDynamoClient()
+
+	key, err := attributevalue.MarshalMap(map[string]string{
+		"team_id": teamID,
+		"run_id":  runID,
+	})
+	if err != nil {
+		return fmt.Errorf("marshal key: %w", err)
+	}
+
+	_, err = client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
+		TableName: aws.String(activeRunsTableName),
+		Key:       key,
+	})
+	if err != nil {
+		return fmt.Errorf("DynamoDB DeleteItem operation failed: %w", err)
+	}
+
+	return nil
+}

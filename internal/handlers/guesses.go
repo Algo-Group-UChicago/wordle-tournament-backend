@@ -29,6 +29,9 @@ func GuessesHandler() http.HandlerFunc {
 	}
 }
 
+// Potential Issues:
+// - If the team_id + run_id are invalid, request returns 500 error when we should return something more helpful.
+// - No server-side validation on NumGuesses being less than MAX_GUESSSES (already in middleware)
 func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
 	// TODO: uppercase guesses will FAIL
 	var req GuessesRequest
