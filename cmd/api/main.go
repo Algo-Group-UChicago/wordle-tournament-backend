@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	cfg := config.Load()
+	cfg := config.Get()
 
 	log.Printf("Starting Wordle Tournament API...")
 	log.Printf("Port: %s", cfg.Port)

@@ -21,6 +21,7 @@ func New() *Server {
 
 func (s *Server) setupRoutes() {
 	s.mux.HandleFunc("/health", handlers.HealthHandler())
+	s.mux.HandleFunc("/start", handlers.StartHandler())
 	s.mux.HandleFunc("/api/guesses", handlers.GuessesHandler())
 
 	s.mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
