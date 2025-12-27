@@ -62,17 +62,13 @@ func createDefaultGameStates() []GameState {
 	return games
 }
 
-// CreateDefaultActiveRun creates a new ActiveRuns entry in DynamoDB for the given
+// PutDefaultActiveRun creates a new ActiveRuns entry in DynamoDB for the given
 // team_id and run_id. The entry contains a list of GameState entries, each with
 // a unique randomly selected answer from the corpus. The item is configured with
 // a TTL that expires after ActiveRunTTL duration.
 //
 // Returns an error if marshaling or writing to DynamoDB fails.
-func CreateDefaultActiveRun(teamID, runID string) error {
-	ctx := context.Background()
-
-	client := getDynamoClient()
-
+func PutDefaultActiveRun(teamID, runID string) error {
 	item := ActiveRunItem{
 		TeamID: teamID,
 		RunID:  runID,
@@ -80,20 +76,7 @@ func CreateDefaultActiveRun(teamID, runID string) error {
 		TTL:    time.Now().Add(ActiveRunTTL).Unix(),
 	}
 
-	av, err := attributevalue.MarshalMap(item)
-	if err != nil {
-		return fmt.Errorf("marshal ActiveRuns item: %w", err)
-	}
-
-	_, err = client.PutItem(ctx, &dynamodb.PutItemInput{
-		TableName: aws.String(activeRunsTableName),
-		Item:      av,
-	})
-	if err != nil {
-		return fmt.Errorf("put ActiveRuns item: %w", err)
-	}
-
-	return nil
+	return PutActiveRun(&item)
 }
 
 // GetActiveRun queries the ActiveRuns table by team_id and run_id to retrieve
@@ -132,10 +115,10 @@ func GetActiveRun(teamID, runID string) (*ActiveRunItem, error) {
 	return &item, nil
 }
 
-// UpdateActiveRun writes the provided ActiveRunItem to the ActiveRuns table in DynamoDB.
+// PutActiveRun writes the provided ActiveRunItem to the ActiveRuns table in DynamoDB.
 // It uses PutItem which will overwrite the entire item if it already exists, or create
 // it if it doesn't. Returns an error if marshaling or writing to DynamoDB fails.
-func UpdateActiveRun(activeRun *ActiveRunItem) error {
+func PutActiveRun(activeRun *ActiveRunItem) error {
 	ctx := context.Background()
 
 	client := getDynamoClient()

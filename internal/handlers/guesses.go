@@ -4,12 +4,13 @@ import (
 	"encoding/json"
 	"net/http"
 	"wordle-tournament-backend/internal/common"
+	"wordle-tournament-backend/internal/storage"
 	"wordle-tournament-backend/internal/wordle"
-	"wordle-tournament-backend/internal/wordle/corpus"
 )
 
 type GuessesRequest struct {
 	TeamId  string   `json:"team_id"`
+	RunId   string   `json:"run_id"`
 	Guesses []string `json:"guesses"`
 }
 
@@ -46,9 +47,30 @@ func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: make answers dependent on a team's id
-	possibleAnswers := corpus.GetGradingAnswerKey()
-	answers := possibleAnswers[:common.NumTargetWords]
+	// No validation on whether team_id + run_id are valid
+	// TODO: Add team_id + run_id validation. Illegal values currently return a 500 error.
+	activeRun, err := storage.GetActiveRun(req.TeamId, req.RunId)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Process guesses and update activeRun GameStates
+	answers := make([]string, len(activeRun.Games))
+	for i := range req.Guesses {
+		answers[i] = activeRun.Games[i].Answer
+
+		if req.Guesses[i] == common.DummyGuess {
+			activeRun.Games[i].Solved = true
+		} else if !activeRun.Games[i].Solved {
+			activeRun.Games[i].NumGuesses++
+		}
+	}
+
+	if err := storage.PutActiveRun(activeRun); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	response := GuessesResponse{
 		Hints: wordle.GradeGuesses(req.Guesses, answers),

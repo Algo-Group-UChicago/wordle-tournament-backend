@@ -43,7 +43,7 @@ func handlePostStart(w http.ResponseWriter, r *http.Request) {
 
 	runID := uuid.New().String()
 
-	if err := storage.CreateDefaultActiveRun(req.TeamID, runID); err != nil {
+	if err := storage.PutDefaultActiveRun(req.TeamID, runID); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
