@@ -95,3 +95,63 @@ func CreateDefaultActiveRun(teamID, runID string) error {
 
 	return nil
 }
+
+// GetActiveRun queries the ActiveRuns table by team_id and run_id to retrieve
+// an ActiveRunItem. If the item is found, returns a pointer to the item and nil error.
+// If the item is not found in the database, returns a nil pointer and an error.
+func GetActiveRun(teamID, runID string) (*ActiveRunItem, error) {
+	ctx := context.Background()
+
+	client := getDynamoClient()
+
+	key, err := attributevalue.MarshalMap(map[string]string{
+		"team_id": teamID,
+		"run_id":  runID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("marshal key: %w", err)
+	}
+
+	result, err := client.GetItem(ctx, &dynamodb.GetItemInput{
+		TableName: aws.String(activeRunsTableName),
+		Key:       key,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("DynamoDB GetItem operation failed: %w", err)
+	}
+
+	if result.Item == nil {
+		return nil, fmt.Errorf("ActiveRuns item not found for team_id=%s, run_id=%s", teamID, runID)
+	}
+
+	var item ActiveRunItem
+	if err := attributevalue.UnmarshalMap(result.Item, &item); err != nil {
+		return nil, fmt.Errorf("unmarshal ActiveRuns item: %w", err)
+	}
+
+	return &item, nil
+}
+
+// UpdateActiveRun writes the provided ActiveRunItem to the ActiveRuns table in DynamoDB.
+// It uses PutItem which will overwrite the entire item if it already exists, or create
+// it if it doesn't. Returns an error if marshaling or writing to DynamoDB fails.
+func UpdateActiveRun(activeRun *ActiveRunItem) error {
+	ctx := context.Background()
+
+	client := getDynamoClient()
+
+	av, err := attributevalue.MarshalMap(activeRun)
+	if err != nil {
+		return fmt.Errorf("marshal ActiveRuns item: %w", err)
+	}
+
+	_, err = client.PutItem(ctx, &dynamodb.PutItemInput{
+		TableName: aws.String(activeRunsTableName),
+		Item:      av,
+	})
+	if err != nil {
+		return fmt.Errorf("put ActiveRuns item: %w", err)
+	}
+
+	return nil
+}
