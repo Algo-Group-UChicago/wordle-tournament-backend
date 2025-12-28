@@ -50,7 +50,7 @@ services:
     build: .
     environment:
       - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
-
+      - RANDOM_SEED=1
       - AWS_ACCESS_KEY_ID=dummy
       - AWS_SECRET_ACCESS_KEY=dummy
       - AWS_REGION=us-east-1
@@ -58,3 +58,18 @@ services:
       - setup-local-db
     ports:
       - "8080:8080"
+
+  test:
+    build:
+      context: .
+      target: builder
+    working_dir: /app
+    environment:
+      - DYNAMODB_ENDPOINT=http://dynamodb-local:8000
+      - AWS_REGION=us-east-1
+      - RANDOM_SEED=1
+      - AWS_ACCESS_KEY_ID=dummy
+      - AWS_SECRET_ACCESS_KEY=dummy
+    depends_on:
+      - setup-local-db
+    command: sh -c "cd /app && go test -tags=integration -v ./internal/integration_test/..."

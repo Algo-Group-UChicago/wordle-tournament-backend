@@ -67,15 +67,22 @@ func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Process guesses and update activeRun GameStates
+	// Extract answers from activeRun.Games
 	answers := make([]string, len(activeRun.Games))
-	for i := range req.Guesses {
+	for i := range activeRun.Games {
 		answers[i] = activeRun.Games[i].Answer
+	}
 
-		if req.Guesses[i] == common.DummyGuess {
-			activeRun.Games[i].Solved = true
-		} else if !activeRun.Games[i].Solved {
+	hints := wordle.GradeGuesses(req.Guesses, answers)
+
+	// Update activeRun GameStates based on hints
+	for i, hint := range hints {
+		if req.Guesses[i] != common.DummyGuess {
 			activeRun.Games[i].NumGuesses++
+		}
+
+		if hint == strings.Repeat("O", common.WordLength) {
+			activeRun.Games[i].Solved = true
 		}
 	}
 
@@ -85,7 +92,7 @@ func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := GuessesResponse{
-		Hints: wordle.GradeGuesses(req.Guesses, answers),
+		Hints: hints,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
