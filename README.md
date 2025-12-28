@@ -73,12 +73,6 @@ Integration tests require DynamoDB Local to be running. The easiest way is using
 make integration-tests
 ```
 
-This will:
-1. Start DynamoDB Local and create necessary tables
-2. Set required environment variables
-3. Run the integration tests
-4. Clean up Docker containers
-
 **Alternative: Run script directly:**
 ```bash
 ./scripts/run-integration-tests.sh
