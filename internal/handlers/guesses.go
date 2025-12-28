@@ -75,9 +75,13 @@ func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
 
 	hints := wordle.GradeGuesses(req.Guesses, answers)
 
-	// Update activeRun GameStates based on hints
 	for i, hint := range hints {
-		if req.Guesses[i] != common.DummyGuess {
+		// If the guess is DummyGuess, the game is already solved
+		if req.Guesses[i] == common.DummyGuess {
+			activeRun.Games[i].Solved = true
+		}
+
+		if req.Guesses[i] != common.DummyGuess && !activeRun.Games[i].Solved {
 			activeRun.Games[i].NumGuesses++
 		}
 

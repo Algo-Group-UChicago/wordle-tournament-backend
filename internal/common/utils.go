@@ -15,7 +15,6 @@ func GetSeed() int64 {
 	if cfg.RandomSeed != "" {
 		seed, err := strconv.ParseInt(cfg.RandomSeed, 10, 64)
 		if err != nil {
-			// If seed is invalid, fall back to time-based seed
 			return time.Now().UnixNano()
 		}
 		return seed

@@ -8,12 +8,10 @@ help:
 	@echo 'Available targets:'
 	@awk '/^[a-zA-Z_-]+:/ {printf "  %s\n", $$1}' $(MAKEFILE_LIST) | grep -v '^  help$$' | sort
 
-test:
+unit-tests:
 	go test ./...
 
-test-unit: test
-
-test-integration:
+integration-tests:
 	@./scripts/run-integration-tests.sh
 
 build:

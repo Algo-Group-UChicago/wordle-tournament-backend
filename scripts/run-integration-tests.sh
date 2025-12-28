@@ -11,6 +11,9 @@ docker-compose build test
 
 docker-compose up -d dynamodb-local setup-local-db
 
+# Wait for DynamoDB Local to be ready before running tests.
+# docker-compose up -d returns immediately but doesn't wait for services to be ready.
+# This loop ensures DynamoDB Local is actually accepting connections before proceeding.
 timeout=30
 counter=0
 while ! curl -s http://localhost:8000 > /dev/null 2>&1; do
