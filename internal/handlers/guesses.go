@@ -3,13 +3,15 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 	"wordle-tournament-backend/internal/common"
+	"wordle-tournament-backend/internal/storage"
 	"wordle-tournament-backend/internal/wordle"
-	"wordle-tournament-backend/internal/wordle/corpus"
 )
 
 type GuessesRequest struct {
 	TeamId  string   `json:"team_id"`
+	RunId   string   `json:"run_id"`
 	Guesses []string `json:"guesses"`
 }
 
@@ -28,6 +30,9 @@ func GuessesHandler() http.HandlerFunc {
 	}
 }
 
+// Potential Issues:
+// - If the team_id + run_id are invalid, request returns 500 error when we should return something more helpful.
+// - No server-side validation on NumGuesses being less than MAX_GUESSSES (already in middleware)
 func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
 	// TODO: uppercase guesses will FAIL
 	var req GuessesRequest
@@ -36,8 +41,13 @@ func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := wordle.ValidateTeamId(req.TeamId); err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+	if req.TeamId == "" {
+		http.Error(w, "team_id cannot be empty", http.StatusBadRequest)
+		return
+	}
+
+	if req.RunId == "" {
+		http.Error(w, "run_id cannot be empty", http.StatusBadRequest)
 		return
 	}
 
@@ -46,12 +56,47 @@ func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: make answers dependent on a team's id
-	possibleAnswers := corpus.GetGradingAnswerKey()
-	answers := possibleAnswers[:common.NumTargetWords]
+	activeRun, err := storage.GetActiveRun(req.TeamId, req.RunId)
+	if err != nil {
+		// Must distinguish between (team_id, run_id) being invalid and network issues causing the request to fail.
+		statusCode := http.StatusInternalServerError
+		if strings.Contains(err.Error(), "expired or not found") {
+			statusCode = http.StatusBadRequest
+		}
+		http.Error(w, err.Error(), statusCode)
+		return
+	}
+
+	// Extract answers from activeRun.Games
+	answers := make([]string, len(activeRun.Games))
+	for i := range activeRun.Games {
+		answers[i] = activeRun.Games[i].Answer
+	}
+
+	hints := wordle.GradeGuesses(req.Guesses, answers)
+
+	for i, hint := range hints {
+		// If the guess is DummyGuess, the game is already solved
+		if req.Guesses[i] == common.DummyGuess {
+			activeRun.Games[i].Solved = true
+		}
+
+		if req.Guesses[i] != common.DummyGuess && !activeRun.Games[i].Solved {
+			activeRun.Games[i].NumGuesses++
+		}
+
+		if hint == strings.Repeat("O", common.WordLength) {
+			activeRun.Games[i].Solved = true
+		}
+	}
+
+	if err := storage.PutActiveRun(activeRun); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	response := GuessesResponse{
-		Hints: wordle.GradeGuesses(req.Guesses, answers),
+		Hints: hints,
 	}
 
 	w.Header().Set("Content-Type", "application/json")

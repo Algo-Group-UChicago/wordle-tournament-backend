@@ -19,6 +19,11 @@ func New() *Server {
 	return s
 }
 
+// Handler returns the HTTP handler for the server (for testing)
+func (s *Server) Handler() http.Handler {
+	return s.mux
+}
+
 func (s *Server) setupRoutes() {
 	s.mux.HandleFunc("/health", handlers.HealthHandler())
 	s.mux.HandleFunc("/start", handlers.StartHandler())

@@ -64,3 +64,16 @@ go test ./...
 ```bash
 go test ./internal/wordle
 ```
+
+### Run integration tests:
+
+Integration tests require DynamoDB Local to be running. The easiest way is using Make:
+
+```bash
+make integration-tests
+```
+
+**Alternative: Run script directly:**
+```bash
+./scripts/run-integration-tests.sh
+```

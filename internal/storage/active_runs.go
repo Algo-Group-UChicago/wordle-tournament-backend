@@ -39,9 +39,7 @@ type ActiveRunItem struct {
 func createDefaultGameStates() []GameState {
 	possibleAnswers := corpus.GetGradingAnswerKey()
 
-	// rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	// Creates identical games for each run
-	rng := rand.New(rand.NewSource(1))
+	rng := rand.New(rand.NewSource(common.GetSeed()))
 	selected := make(map[string]bool)
 	games := make([]GameState, 0, common.NumTargetWords)
 
@@ -62,17 +60,13 @@ func createDefaultGameStates() []GameState {
 	return games
 }
 
-// CreateDefaultActiveRun creates a new ActiveRuns entry in DynamoDB for the given
+// PutDefaultActiveRun creates a new ActiveRuns entry in DynamoDB for the given
 // team_id and run_id. The entry contains a list of GameState entries, each with
 // a unique randomly selected answer from the corpus. The item is configured with
 // a TTL that expires after ActiveRunTTL duration.
 //
 // Returns an error if marshaling or writing to DynamoDB fails.
-func CreateDefaultActiveRun(teamID, runID string) error {
-	ctx := context.Background()
-
-	client := getDynamoClient()
-
+func PutDefaultActiveRun(teamID, runID string) error {
 	item := ActiveRunItem{
 		TeamID: teamID,
 		RunID:  runID,
@@ -80,7 +74,54 @@ func CreateDefaultActiveRun(teamID, runID string) error {
 		TTL:    time.Now().Add(ActiveRunTTL).Unix(),
 	}
 
-	av, err := attributevalue.MarshalMap(item)
+	return PutActiveRun(&item)
+}
+
+// GetActiveRun queries the ActiveRuns table by team_id and run_id to retrieve
+// an ActiveRunItem. If the item is found, returns a pointer to the item and nil error.
+// If the item is not found in the database, returns a nil pointer and an error.
+func GetActiveRun(teamID, runID string) (*ActiveRunItem, error) {
+	ctx := context.Background()
+
+	client := getDynamoClient()
+
+	key, err := attributevalue.MarshalMap(map[string]string{
+		"team_id": teamID,
+		"run_id":  runID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("marshal key: %w", err)
+	}
+
+	result, err := client.GetItem(ctx, &dynamodb.GetItemInput{
+		TableName: aws.String(activeRunsTableName),
+		Key:       key,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("DynamoDB GetItem operation failed: %w", err)
+	}
+
+	if result.Item == nil {
+		return nil, fmt.Errorf("run expired or not found for team_id=%s, run_id=%s", teamID, runID)
+	}
+
+	var item ActiveRunItem
+	if err := attributevalue.UnmarshalMap(result.Item, &item); err != nil {
+		return nil, fmt.Errorf("unmarshal ActiveRuns item: %w", err)
+	}
+
+	return &item, nil
+}
+
+// PutActiveRun writes the provided ActiveRunItem to the ActiveRuns table in DynamoDB.
+// It uses PutItem which will overwrite the entire item if it already exists, or create
+// it if it doesn't. Returns an error if marshaling or writing to DynamoDB fails.
+func PutActiveRun(activeRun *ActiveRunItem) error {
+	ctx := context.Background()
+
+	client := getDynamoClient()
+
+	av, err := attributevalue.MarshalMap(activeRun)
 	if err != nil {
 		return fmt.Errorf("marshal ActiveRuns item: %w", err)
 	}
@@ -91,6 +132,32 @@ func CreateDefaultActiveRun(teamID, runID string) error {
 	})
 	if err != nil {
 		return fmt.Errorf("put ActiveRuns item: %w", err)
+	}
+
+	return nil
+}
+
+// RemoveActiveRun deletes an ActiveRuns item from DynamoDB by team_id and run_id.
+// Returns an error if the key marshaling or DeleteItem operation fails.
+func RemoveActiveRun(teamID, runID string) error {
+	ctx := context.Background()
+
+	client := getDynamoClient()
+
+	key, err := attributevalue.MarshalMap(map[string]string{
+		"team_id": teamID,
+		"run_id":  runID,
+	})
+	if err != nil {
+		return fmt.Errorf("marshal key: %w", err)
+	}
+
+	_, err = client.DeleteItem(ctx, &dynamodb.DeleteItemInput{
+		TableName: aws.String(activeRunsTableName),
+		Key:       key,
+	})
+	if err != nil {
+		return fmt.Errorf("DynamoDB DeleteItem operation failed: %w", err)
 	}
 
 	return nil
