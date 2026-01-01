@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"wordle-tournament-backend/internal/common"
@@ -32,6 +33,10 @@ func setupIntegrationTest(t *testing.T) *httptest.Server {
 //  4. Submits all perfect guesses via POST /api/guesses
 //  5. Verifies the response contains hints for all games, and all hints are "OOOOO" (all correct)
 //  6. Verifies all games are now marked as solved with NumGuesses = 1
+//  7. Calls POST /end to complete the run
+//  8. Verifies the correct entry is created in Scores database
+//  9. Verifies the ActiveRun entry has been removed
+//  10. Calls POST /end again with the same team_id and run_id, which should fail since the ActiveRun no longer exists
 func TestIntegrationInstantSolve(t *testing.T) {
 	ts := setupIntegrationTest(t)
 	defer ts.Close()
@@ -160,6 +165,103 @@ func TestIntegrationInstantSolve(t *testing.T) {
 		t.Fatal("Not all games were marked as solved")
 	}
 
+	// Step 7: Call POST /end to complete the run
+	endReq := handlers.EndRequest{
+		TeamID: teamID,
+		RunID:  runID,
+	}
+	endBody, err := json.Marshal(endReq)
+	if err != nil {
+		t.Fatalf("Failed to marshal end request: %v", err)
+	}
+
+	endResp, err := client.Post(ts.URL+"/end", "application/json", bytes.NewBuffer(endBody))
+	if err != nil {
+		t.Fatalf("Failed to call /end: %v", err)
+	}
+	defer endResp.Body.Close()
+
+	if endResp.StatusCode != http.StatusOK {
+		t.Fatalf("Expected status 200 OK, got %d", endResp.StatusCode)
+	}
+
+	var endResponse handlers.EndResponse
+	if err := json.NewDecoder(endResp.Body).Decode(&endResponse); err != nil {
+		t.Fatalf("Failed to decode end response: %v", err)
+	}
+
+	// Verify response values
+	if !endResponse.Solved {
+		t.Error("End response should indicate all games are solved")
+	}
+	if endResponse.AverageGuesses != 1.0 {
+		t.Errorf("End response averageGuesses should be 1.0 (all games solved in 1 guess), got %f", endResponse.AverageGuesses)
+	}
+	if endResponse.Score <= 0 {
+		t.Errorf("End response score should be positive, got %f", endResponse.Score)
+	}
+	if endResponse.Score != endResponse.AverageGuesses {
+		t.Errorf("End response score and averageGuesses should be equal, got score=%f, averageGuesses=%f", endResponse.Score, endResponse.AverageGuesses)
+	}
+
+	// Step 8: Verify the correct entry is created in Scores database
+	scoreItem, err := storage.GetScore(teamID)
+	if err != nil {
+		t.Fatalf("Failed to get score: %v", err)
+	}
+
+	if scoreItem.TeamID != teamID {
+		t.Errorf("ScoreItem TeamID should be %s, got %s", teamID, scoreItem.TeamID)
+	}
+
+	if len(scoreItem.CompletedRuns) != 1 {
+		t.Fatalf("Expected 1 completed run, got %d", len(scoreItem.CompletedRuns))
+	}
+
+	completedRun := scoreItem.CompletedRuns[0]
+	if completedRun.RunID != runID {
+		t.Errorf("CompletedRun RunID should be %s, got %s", runID, completedRun.RunID)
+	}
+	if !completedRun.Solved {
+		t.Error("CompletedRun should be marked as solved")
+	}
+	if completedRun.Score != endResponse.Score {
+		t.Errorf("CompletedRun Score should be %f, got %f", endResponse.Score, completedRun.Score)
+	}
+	if completedRun.AverageGuesses != endResponse.AverageGuesses {
+		t.Errorf("CompletedRun AverageGuesses should be %f, got %f", endResponse.AverageGuesses, completedRun.AverageGuesses)
+	}
+
+	// Step 9: Verify the ActiveRun entry has been removed
+	_, err = storage.GetActiveRun(teamID, runID)
+	if err == nil {
+		t.Fatal("ActiveRun should have been removed after calling /end")
+	}
+	if err != nil && !strings.Contains(err.Error(), "expired or not found") {
+		t.Fatalf("Expected 'expired or not found' error, got: %v", err)
+	}
+
+	// Step 10: Call POST /end again with the same team_id and run_id, which should fail
+	endReq2 := handlers.EndRequest{
+		TeamID: teamID,
+		RunID:  runID,
+	}
+	endBody2, err := json.Marshal(endReq2)
+	if err != nil {
+		t.Fatalf("Failed to marshal end request: %v", err)
+	}
+
+	endResp2, err := client.Post(ts.URL+"/end", "application/json", bytes.NewBuffer(endBody2))
+	if err != nil {
+		t.Fatalf("Failed to call /end: %v", err)
+	}
+	defer endResp2.Body.Close()
+
+	// Verify /end fails with 400 Bad Request since ActiveRun no longer exists
+	if endResp2.StatusCode != http.StatusBadRequest {
+		t.Fatalf("Expected status 400 Bad Request when ActiveRun doesn't exist, got %d", endResp2.StatusCode)
+	}
+
 	t.Logf("Successfully processed all %d words", common.NumTargetWords)
 }
 
@@ -170,6 +272,9 @@ func TestIntegrationInstantSolve(t *testing.T) {
 //  4. Submits another round with correct guess for game 3, verifying it becomes solved
 //  5. Verifies that already-solved games (games 0 and 1) don't increment NumGuesses
 //     when submitting another round of guesses
+//  6. Calls POST /end once at the end to complete the run (all games are now solved)
+//  7. Verifies the correct entry is created in Scores database
+//  8. Verifies the ActiveRun entry has been removed
 func TestIntegrationMultipleGuessRounds(t *testing.T) {
 	ts := setupIntegrationTest(t)
 	defer ts.Close()
@@ -342,5 +447,81 @@ func TestIntegrationMultipleGuessRounds(t *testing.T) {
 	}
 	if activeRunAfter4.Games[1].NumGuesses != 2 {
 		t.Errorf("Game 1 NumGuesses should remain 2 (already solved), got %d", activeRunAfter4.Games[1].NumGuesses)
+	}
+
+	// Step 6: Call POST /end once at the end to complete the run (all games are now solved)
+	endReq := handlers.EndRequest{
+		TeamID: teamID,
+		RunID:  runID,
+	}
+	endBody, err := json.Marshal(endReq)
+	if err != nil {
+		t.Fatalf("Failed to marshal end request: %v", err)
+	}
+
+	endResp, err := client.Post(ts.URL+"/end", "application/json", bytes.NewBuffer(endBody))
+	if err != nil {
+		t.Fatalf("Failed to call /end: %v", err)
+	}
+	defer endResp.Body.Close()
+
+	if endResp.StatusCode != http.StatusOK {
+		t.Fatalf("Expected status 200 OK, got %d", endResp.StatusCode)
+	}
+
+	var endResponse handlers.EndResponse
+	if err := json.NewDecoder(endResp.Body).Decode(&endResponse); err != nil {
+		t.Fatalf("Failed to decode end response: %v", err)
+	}
+
+	// Verify response values
+	if !endResponse.Solved {
+		t.Error("End response should indicate all games are solved")
+	}
+	if endResponse.Score <= 0 {
+		t.Errorf("End response score should be positive, got %f", endResponse.Score)
+	}
+	if endResponse.AverageGuesses <= 0 {
+		t.Errorf("End response averageGuesses should be positive, got %f", endResponse.AverageGuesses)
+	}
+	if endResponse.Score != endResponse.AverageGuesses {
+		t.Errorf("End response score and averageGuesses should be equal, got score=%f, averageGuesses=%f", endResponse.Score, endResponse.AverageGuesses)
+	}
+
+	// Step 7: Verify the correct entry is created in Scores database
+	scoreItem, err := storage.GetScore(teamID)
+	if err != nil {
+		t.Fatalf("Failed to get score: %v", err)
+	}
+
+	if scoreItem.TeamID != teamID {
+		t.Errorf("ScoreItem TeamID should be %s, got %s", teamID, scoreItem.TeamID)
+	}
+
+	if len(scoreItem.CompletedRuns) != 1 {
+		t.Fatalf("Expected 1 completed run, got %d", len(scoreItem.CompletedRuns))
+	}
+
+	completedRun := scoreItem.CompletedRuns[0]
+	if completedRun.RunID != runID {
+		t.Errorf("CompletedRun RunID should be %s, got %s", runID, completedRun.RunID)
+	}
+	if !completedRun.Solved {
+		t.Error("CompletedRun should be marked as solved")
+	}
+	if completedRun.Score != endResponse.Score {
+		t.Errorf("CompletedRun Score should be %f, got %f", endResponse.Score, completedRun.Score)
+	}
+	if completedRun.AverageGuesses != endResponse.AverageGuesses {
+		t.Errorf("CompletedRun AverageGuesses should be %f, got %f", endResponse.AverageGuesses, completedRun.AverageGuesses)
+	}
+
+	// Step 8: Verify the ActiveRun entry has been removed
+	_, err = storage.GetActiveRun(teamID, runID)
+	if err == nil {
+		t.Fatal("ActiveRun should have been removed after calling /end")
+	}
+	if err != nil && !strings.Contains(err.Error(), "expired or not found") {
+		t.Fatalf("Expected 'expired or not found' error, got: %v", err)
 	}
 }

@@ -81,7 +81,6 @@ func handlePostEnd(w http.ResponseWriter, r *http.Request) {
 		score = storage.CalculateScore(activeRun.Games)
 		solved = true
 	} else {
-		// If not all games are solved, use positive infinity
 		score = math.Inf(1)
 		averageGuesses = math.Inf(1)
 		solved = false
