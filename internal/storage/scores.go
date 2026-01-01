@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -14,12 +15,17 @@ const (
 	scoresTableName = "Scores"
 )
 
+var (
+	// ErrScoreNotFound is returned when a score for a team_id is not found in the Scores table.
+	ErrScoreNotFound = errors.New("score not found")
+)
+
 // CompletedRun represents a single completed run for a team.
 type CompletedRun struct {
 	RunID          string    `dynamodbav:"run_id"`
-	TotalScore     float64   `dynamodbav:"total_score"`
+	Score          float64   `dynamodbav:"score"`
 	AverageGuesses float64   `dynamodbav:"average_guesses"`
-	SolvedCount    int       `dynamodbav:"solved_count"`
+	Solved         bool      `dynamodbav:"solved"`
 	CompletedAt    time.Time `dynamodbav:"completed_at"`
 }
 
@@ -28,6 +34,21 @@ type CompletedRun struct {
 type ScoreItem struct {
 	TeamID        string         `dynamodbav:"team_id"`
 	CompletedRuns []CompletedRun `dynamodbav:"completed_runs"`
+}
+
+// CalculateScore calculates the total score from a list of GameState entries.
+// Returns the average number of guesses across all games.
+func CalculateScore(games []GameState) float64 {
+	if len(games) == 0 {
+		return 0.0
+	}
+
+	totalGuesses := 0.0
+	for _, game := range games {
+		totalGuesses += float64(game.NumGuesses)
+	}
+
+	return totalGuesses / float64(len(games))
 }
 
 // GetScore retrieves a ScoreItem from the Scores table by team_id.
@@ -53,7 +74,7 @@ func GetScore(teamID string) (*ScoreItem, error) {
 	}
 
 	if result.Item == nil {
-		return nil, fmt.Errorf("score not found for team_id=%s", teamID)
+		return nil, fmt.Errorf("%w for team_id=%s", ErrScoreNotFound, teamID)
 	}
 
 	var item ScoreItem
