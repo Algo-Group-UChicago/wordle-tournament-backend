@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -81,8 +80,8 @@ func handlePostEnd(w http.ResponseWriter, r *http.Request) {
 		score = storage.CalculateScore(activeRun.Games)
 		solved = true
 	} else {
-		score = math.Inf(1)
-		averageGuesses = math.Inf(1)
+		score = common.UnsolvedScoreSentinel
+		averageGuesses = common.UnsolvedScoreSentinel
 		solved = false
 	}
 

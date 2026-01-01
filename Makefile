@@ -28,5 +28,4 @@ docker-down:
 	docker-compose down
 
 clean:
-	rm -rf bin/
 	docker-compose down -v

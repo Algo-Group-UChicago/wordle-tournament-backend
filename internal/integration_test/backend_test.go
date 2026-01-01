@@ -7,6 +7,7 @@ package integration_test
 import (
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -36,7 +37,6 @@ func setupIntegrationTest(t *testing.T) *httptest.Server {
 //  7. Calls POST /end to complete the run
 //  8. Verifies the correct entry is created in Scores database
 //  9. Verifies the ActiveRun entry has been removed
-//  10. Calls POST /end again with the same team_id and run_id, which should fail since the ActiveRun no longer exists
 func TestIntegrationInstantSolve(t *testing.T) {
 	ts := setupIntegrationTest(t)
 	defer ts.Close()
@@ -58,7 +58,8 @@ func TestIntegrationInstantSolve(t *testing.T) {
 	defer startResp.Body.Close()
 
 	if startResp.StatusCode != http.StatusCreated {
-		t.Fatalf("Expected status 201 Created, got %d", startResp.StatusCode)
+		bodyBytes, _ := io.ReadAll(startResp.Body)
+		t.Fatalf("Expected status 201 Created, got %d. Response body: %s", startResp.StatusCode, string(bodyBytes))
 	}
 
 	var startResponse handlers.StartResponse
@@ -121,7 +122,8 @@ func TestIntegrationInstantSolve(t *testing.T) {
 	defer guessesResp.Body.Close()
 
 	if guessesResp.StatusCode != http.StatusOK {
-		t.Fatalf("Expected status 200 OK, got %d", guessesResp.StatusCode)
+		bodyBytes, _ := io.ReadAll(guessesResp.Body)
+		t.Fatalf("Expected status 200 OK, got %d. Response body: %s", guessesResp.StatusCode, string(bodyBytes))
 	}
 
 	var guessesResponse handlers.GuessesResponse
@@ -182,7 +184,8 @@ func TestIntegrationInstantSolve(t *testing.T) {
 	defer endResp.Body.Close()
 
 	if endResp.StatusCode != http.StatusOK {
-		t.Fatalf("Expected status 200 OK, got %d", endResp.StatusCode)
+		bodyBytes, _ := io.ReadAll(endResp.Body)
+		t.Fatalf("Expected status 200 OK, got %d. Response body: %s", endResp.StatusCode, string(bodyBytes))
 	}
 
 	var endResponse handlers.EndResponse
@@ -241,12 +244,219 @@ func TestIntegrationInstantSolve(t *testing.T) {
 		t.Fatalf("Expected 'expired or not found' error, got: %v", err)
 	}
 
-	// Step 10: Call POST /end again with the same team_id and run_id, which should fail
-	endReq2 := handlers.EndRequest{
+	t.Logf("Successfully processed all %d words", common.NumTargetWords)
+}
+
+// TestIntegrationEndBeforeAllSolved tests calling POST /end before all games are solved.
+// It performs the following steps:
+//  1. Starts a new run by calling POST /start with a team_id, receiving a run_id
+//  2. Submits incorrect guesses for some games via POST /api/guesses (not solving all games)
+//  3. Calls POST /end to complete the run
+//  4. Verifies the response indicates not all games are solved with UnsolvedScoreSentinel values for score and averageGuesses
+//  5. Verifies a CompletedRun entry is created in Scores database with Solved=false and UnsolvedScoreSentinel values
+func TestIntegrationEndBeforeAllSolved(t *testing.T) {
+	ts := setupIntegrationTest(t)
+	defer ts.Close()
+
+	teamID := "TEST_TEAM_END_BEFORE_SOLVED"
+	client := &http.Client{}
+
+	// Step 1: Start a new run
+	startReq := handlers.StartRequest{TeamID: teamID}
+	startBody, err := json.Marshal(startReq)
+	if err != nil {
+		t.Fatalf("Failed to marshal start request: %v", err)
+	}
+
+	startResp, err := client.Post(ts.URL+"/start", "application/json", bytes.NewBuffer(startBody))
+	if err != nil {
+		t.Fatalf("Failed to call /start: %v", err)
+	}
+	defer startResp.Body.Close()
+
+	var startResponse handlers.StartResponse
+	if err := json.NewDecoder(startResp.Body).Decode(&startResponse); err != nil {
+		t.Fatalf("Failed to decode start response: %v", err)
+	}
+
+	runID := startResponse.RunID
+
+	// Step 2: Submit incorrect guesses for some games via POST /api/guesses (not solving all games)
+	guesses := make([]string, common.NumTargetWords)
+	guesses[0] = "crane" // Wrong guess for game 0
+	for i := 1; i < common.NumTargetWords; i++ {
+		guesses[i] = common.DummyGuess
+	}
+
+	guessesReq := handlers.GuessesRequest{
+		TeamId:  teamID,
+		RunId:   runID,
+		Guesses: guesses,
+	}
+
+	guessesBody, err := json.Marshal(guessesReq)
+	if err != nil {
+		t.Fatalf("Failed to marshal guesses request: %v", err)
+	}
+
+	guessesResp, err := client.Post(ts.URL+"/api/guesses", "application/json", bytes.NewBuffer(guessesBody))
+	if err != nil {
+		t.Fatalf("Failed to call /api/guesses: %v", err)
+	}
+	defer guessesResp.Body.Close()
+
+	// Step 3: Call POST /end to complete the run
+	endReq := handlers.EndRequest{
 		TeamID: teamID,
 		RunID:  runID,
 	}
-	endBody2, err := json.Marshal(endReq2)
+	endBody, err := json.Marshal(endReq)
+	if err != nil {
+		t.Fatalf("Failed to marshal end request: %v", err)
+	}
+
+	endResp, err := client.Post(ts.URL+"/end", "application/json", bytes.NewBuffer(endBody))
+	if err != nil {
+		t.Fatalf("Failed to call /end: %v", err)
+	}
+	defer endResp.Body.Close()
+
+	if endResp.StatusCode != http.StatusOK {
+		// Read the error body to see what went wrong
+		bodyBytes, _ := io.ReadAll(endResp.Body)
+		t.Fatalf("Expected status 200 OK, got %d. Response body: %s", endResp.StatusCode, string(bodyBytes))
+	}
+
+	var endResponse handlers.EndResponse
+	if err := json.NewDecoder(endResp.Body).Decode(&endResponse); err != nil {
+		t.Fatalf("Failed to decode end response: %v", err)
+	}
+
+	// Step 4: Verify the response indicates not all games are solved with -1.0 values for score and averageGuesses
+	if endResponse.Solved {
+		t.Error("End response should indicate not all games are solved")
+	}
+	if endResponse.Score != common.UnsolvedScoreSentinel {
+		t.Errorf("End response score should be %f when not all games solved, got %f", common.UnsolvedScoreSentinel, endResponse.Score)
+	}
+	if endResponse.AverageGuesses != common.UnsolvedScoreSentinel {
+		t.Errorf("End response averageGuesses should be %f when not all games solved, got %f", common.UnsolvedScoreSentinel, endResponse.AverageGuesses)
+	}
+
+	// Step 5: Verify a CompletedRun entry is created in Scores database with Solved=false and -1.0 values
+	scoreItem, err := storage.GetScore(teamID)
+	if err != nil {
+		t.Fatalf("Failed to get score: %v", err)
+	}
+
+	if len(scoreItem.CompletedRuns) != 1 {
+		t.Fatalf("Expected 1 completed run, got %d", len(scoreItem.CompletedRuns))
+	}
+
+	completedRun := scoreItem.CompletedRuns[0]
+	if completedRun.RunID != runID {
+		t.Errorf("CompletedRun RunID should be %s, got %s", runID, completedRun.RunID)
+	}
+	if completedRun.Solved {
+		t.Error("CompletedRun should be marked as not solved")
+	}
+	if completedRun.Score != common.UnsolvedScoreSentinel {
+		t.Errorf("CompletedRun Score should be %f when not all games solved, got %f", common.UnsolvedScoreSentinel, completedRun.Score)
+	}
+	if completedRun.AverageGuesses != common.UnsolvedScoreSentinel {
+		t.Errorf("CompletedRun AverageGuesses should be %f when not all games solved, got %f", common.UnsolvedScoreSentinel, completedRun.AverageGuesses)
+	}
+}
+
+// TestIntegrationEndCalledTwice tests that calling POST /end twice results in an error on the second call.
+// It performs the following steps:
+//  1. Starts a new run by calling POST /start with a team_id, receiving a run_id
+//  2. Builds a guesses array using the actual answers from each game
+//  3. Submits all perfect guesses via POST /api/guesses to solve all games
+//  4. Calls POST /end the first time (should succeed)
+//  5. Verifies the first call returns 200 OK
+//  6. Calls POST /end the second time with the same team_id and run_id
+//  7. Verifies the second call fails with 400 Bad Request since the ActiveRun no longer exists
+func TestIntegrationEndCalledTwice(t *testing.T) {
+	ts := setupIntegrationTest(t)
+	defer ts.Close()
+
+	teamID := "TEST_TEAM_END_TWICE"
+	client := &http.Client{}
+
+	// Step 1: Start a new run
+	startReq := handlers.StartRequest{TeamID: teamID}
+	startBody, err := json.Marshal(startReq)
+	if err != nil {
+		t.Fatalf("Failed to marshal start request: %v", err)
+	}
+
+	startResp, err := client.Post(ts.URL+"/start", "application/json", bytes.NewBuffer(startBody))
+	if err != nil {
+		t.Fatalf("Failed to call /start: %v", err)
+	}
+	defer startResp.Body.Close()
+
+	var startResponse handlers.StartResponse
+	if err := json.NewDecoder(startResp.Body).Decode(&startResponse); err != nil {
+		t.Fatalf("Failed to decode start response: %v", err)
+	}
+
+	runID := startResponse.RunID
+
+	// Step 2: Build guesses array using the actual answers from each game
+	activeRun, err := storage.GetActiveRun(teamID, runID)
+	if err != nil {
+		t.Fatalf("Failed to get active run: %v", err)
+	}
+
+	guesses := make([]string, common.NumTargetWords)
+	for i := range activeRun.Games {
+		guesses[i] = activeRun.Games[i].Answer
+	}
+
+	// Step 3: Submit all perfect guesses via POST /api/guesses to solve all games
+	guessesReq := handlers.GuessesRequest{
+		TeamId:  teamID,
+		RunId:   runID,
+		Guesses: guesses,
+	}
+
+	guessesBody, err := json.Marshal(guessesReq)
+	if err != nil {
+		t.Fatalf("Failed to marshal guesses request: %v", err)
+	}
+
+	guessesResp, err := client.Post(ts.URL+"/api/guesses", "application/json", bytes.NewBuffer(guessesBody))
+	if err != nil {
+		t.Fatalf("Failed to call /api/guesses: %v", err)
+	}
+	defer guessesResp.Body.Close()
+
+	// Step 4: Call POST /end the first time (should succeed)
+	endReq := handlers.EndRequest{
+		TeamID: teamID,
+		RunID:  runID,
+	}
+	endBody, err := json.Marshal(endReq)
+	if err != nil {
+		t.Fatalf("Failed to marshal end request: %v", err)
+	}
+
+	endResp, err := client.Post(ts.URL+"/end", "application/json", bytes.NewBuffer(endBody))
+	if err != nil {
+		t.Fatalf("Failed to call /end: %v", err)
+	}
+	defer endResp.Body.Close()
+
+	// Step 5: Verify the first call returns 200 OK
+	if endResp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(endResp.Body)
+		t.Fatalf("Expected status 200 OK for first /end call, got %d. Response body: %s", endResp.StatusCode, string(bodyBytes))
+	}
+
+	// Step 6: Call POST /end the second time with the same team_id and run_id
+	endBody2, err := json.Marshal(endReq)
 	if err != nil {
 		t.Fatalf("Failed to marshal end request: %v", err)
 	}
@@ -257,12 +467,179 @@ func TestIntegrationInstantSolve(t *testing.T) {
 	}
 	defer endResp2.Body.Close()
 
-	// Verify /end fails with 400 Bad Request since ActiveRun no longer exists
+	// Step 7: Verify the second call fails with 400 Bad Request since the ActiveRun no longer exists
 	if endResp2.StatusCode != http.StatusBadRequest {
-		t.Fatalf("Expected status 400 Bad Request when ActiveRun doesn't exist, got %d", endResp2.StatusCode)
+		bodyBytes, _ := io.ReadAll(endResp2.Body)
+		t.Fatalf("Expected status 400 Bad Request when ActiveRun doesn't exist, got %d. Response body: %s", endResp2.StatusCode, string(bodyBytes))
+	}
+}
+
+// TestIntegrationGuessesAfterEnd tests that calling POST /api/guesses after /end has been called results in an error.
+// It performs the following steps:
+//  1. Starts a new run by calling POST /start with a team_id, receiving a run_id
+//  2. Builds a guesses array using the actual answers from each game
+//  3. Submits all perfect guesses via POST /api/guesses to solve all games
+//  4. Calls POST /end to complete the run
+//  5. Verifies the /end call succeeds
+//  6. Attempts to call POST /api/guesses again with the same run_id
+//  7. Verifies the second /api/guesses call fails with 400 Bad Request since the ActiveRun no longer exists
+func TestIntegrationGuessesAfterEnd(t *testing.T) {
+	ts := setupIntegrationTest(t)
+	defer ts.Close()
+
+	teamID := "TEST_TEAM_GUESSES_AFTER_END"
+	client := &http.Client{}
+
+	// Step 1: Start a new run
+	startReq := handlers.StartRequest{TeamID: teamID}
+	startBody, err := json.Marshal(startReq)
+	if err != nil {
+		t.Fatalf("Failed to marshal start request: %v", err)
 	}
 
-	t.Logf("Successfully processed all %d words", common.NumTargetWords)
+	startResp, err := client.Post(ts.URL+"/start", "application/json", bytes.NewBuffer(startBody))
+	if err != nil {
+		t.Fatalf("Failed to call /start: %v", err)
+	}
+	defer startResp.Body.Close()
+
+	var startResponse handlers.StartResponse
+	if err := json.NewDecoder(startResp.Body).Decode(&startResponse); err != nil {
+		t.Fatalf("Failed to decode start response: %v", err)
+	}
+
+	runID := startResponse.RunID
+
+	// Step 2: Build guesses array using the actual answers from each game
+	activeRun, err := storage.GetActiveRun(teamID, runID)
+	if err != nil {
+		t.Fatalf("Failed to get active run: %v", err)
+	}
+
+	guesses := make([]string, common.NumTargetWords)
+	for i := range activeRun.Games {
+		guesses[i] = activeRun.Games[i].Answer
+	}
+
+	// Step 3: Submit all perfect guesses via POST /api/guesses to solve all games
+	guessesReq := handlers.GuessesRequest{
+		TeamId:  teamID,
+		RunId:   runID,
+		Guesses: guesses,
+	}
+
+	guessesBody, err := json.Marshal(guessesReq)
+	if err != nil {
+		t.Fatalf("Failed to marshal guesses request: %v", err)
+	}
+
+	guessesResp, err := client.Post(ts.URL+"/api/guesses", "application/json", bytes.NewBuffer(guessesBody))
+	if err != nil {
+		t.Fatalf("Failed to call /api/guesses: %v", err)
+	}
+	defer guessesResp.Body.Close()
+
+	// Step 4: Call POST /end to complete the run
+	endReq := handlers.EndRequest{
+		TeamID: teamID,
+		RunID:  runID,
+	}
+	endBody, err := json.Marshal(endReq)
+	if err != nil {
+		t.Fatalf("Failed to marshal end request: %v", err)
+	}
+
+	endResp, err := client.Post(ts.URL+"/end", "application/json", bytes.NewBuffer(endBody))
+	if err != nil {
+		t.Fatalf("Failed to call /end: %v", err)
+	}
+	defer endResp.Body.Close()
+
+	// Step 5: Verify the /end call succeeds
+	if endResp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(endResp.Body)
+		t.Fatalf("Expected status 200 OK for /end call, got %d. Response body: %s", endResp.StatusCode, string(bodyBytes))
+	}
+
+	// Step 6: Attempt to call POST /api/guesses again with the same run_id
+	guessesBody2, err := json.Marshal(guessesReq)
+	if err != nil {
+		t.Fatalf("Failed to marshal guesses request: %v", err)
+	}
+
+	guessesResp2, err := client.Post(ts.URL+"/api/guesses", "application/json", bytes.NewBuffer(guessesBody2))
+	if err != nil {
+		t.Fatalf("Failed to call /api/guesses: %v", err)
+	}
+	defer guessesResp2.Body.Close()
+
+	// Step 7: Verify the second /api/guesses call fails with 400 Bad Request since the ActiveRun no longer exists
+	if guessesResp2.StatusCode != http.StatusBadRequest {
+		bodyBytes, _ := io.ReadAll(guessesResp2.Body)
+		t.Fatalf("Expected status 400 Bad Request when ActiveRun doesn't exist, got %d. Response body: %s", guessesResp2.StatusCode, string(bodyBytes))
+	}
+}
+
+// TestIntegrationGuessesArrayLengthMismatch tests that calling POST /api/guesses with wrong number of guesses results in an error.
+// It performs the following steps:
+//  1. Starts a new run by calling POST /start with a team_id, receiving a run_id
+//  2. Attempts to submit guesses array with wrong length (too few guesses) via POST /api/guesses
+//  3. Verifies the call fails with 400 Bad Request
+func TestIntegrationGuessesArrayLengthMismatch(t *testing.T) {
+	ts := setupIntegrationTest(t)
+	defer ts.Close()
+
+	teamID := "TEST_TEAM_GUESSES_LENGTH"
+	client := &http.Client{}
+
+	// Step 1: Start a new run
+	startReq := handlers.StartRequest{TeamID: teamID}
+	startBody, err := json.Marshal(startReq)
+	if err != nil {
+		t.Fatalf("Failed to marshal start request: %v", err)
+	}
+
+	startResp, err := client.Post(ts.URL+"/start", "application/json", bytes.NewBuffer(startBody))
+	if err != nil {
+		t.Fatalf("Failed to call /start: %v", err)
+	}
+	defer startResp.Body.Close()
+
+	var startResponse handlers.StartResponse
+	if err := json.NewDecoder(startResp.Body).Decode(&startResponse); err != nil {
+		t.Fatalf("Failed to decode start response: %v", err)
+	}
+
+	runID := startResponse.RunID
+
+	// Step 2: Attempt to submit guesses array with wrong length (too few guesses) via POST /api/guesses
+	guesses := make([]string, common.NumTargetWords-1) // One less than required
+	for i := range guesses {
+		guesses[i] = "crane"
+	}
+
+	guessesReq := handlers.GuessesRequest{
+		TeamId:  teamID,
+		RunId:   runID,
+		Guesses: guesses,
+	}
+
+	guessesBody, err := json.Marshal(guessesReq)
+	if err != nil {
+		t.Fatalf("Failed to marshal guesses request: %v", err)
+	}
+
+	guessesResp, err := client.Post(ts.URL+"/api/guesses", "application/json", bytes.NewBuffer(guessesBody))
+	if err != nil {
+		t.Fatalf("Failed to call /api/guesses: %v", err)
+	}
+	defer guessesResp.Body.Close()
+
+	// Step 3: Verify the call fails with 400 Bad Request
+	if guessesResp.StatusCode != http.StatusBadRequest {
+		bodyBytes, _ := io.ReadAll(guessesResp.Body)
+		t.Fatalf("Expected status 400 Bad Request for wrong array length, got %d. Response body: %s", guessesResp.StatusCode, string(bodyBytes))
+	}
 }
 
 // TestIntegrationMultipleGuessRounds tests the behavior of multiple rounds of guesses:
@@ -466,7 +843,8 @@ func TestIntegrationMultipleGuessRounds(t *testing.T) {
 	defer endResp.Body.Close()
 
 	if endResp.StatusCode != http.StatusOK {
-		t.Fatalf("Expected status 200 OK, got %d", endResp.StatusCode)
+		bodyBytes, _ := io.ReadAll(endResp.Body)
+		t.Fatalf("Expected status 200 OK, got %d. Response body: %s", endResp.StatusCode, string(bodyBytes))
 	}
 
 	var endResponse handlers.EndResponse
