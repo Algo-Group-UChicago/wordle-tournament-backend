@@ -11,7 +11,7 @@ help:
 unit-tests:
 	go test ./...
 
-integration-tests:
+integration-tests: clean
 	@./scripts/run-integration-tests.sh
 
 build:
@@ -28,5 +28,4 @@ docker-down:
 	docker-compose down
 
 clean:
-	rm -rf bin/
 	docker-compose down -v
