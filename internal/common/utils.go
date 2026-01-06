@@ -7,6 +7,10 @@ import (
 	"wordle-tournament-backend/internal/config"
 )
 
+// UnsolvedScoreSentinel is used to represent an unsolved run's score in DynamoDB
+// (since DynamoDB cannot store infinity values)
+const UnsolvedScoreSentinel = -1.0
+
 // GetSeed returns the random seed to use for game generation.
 // If RANDOM_SEED environment variable is set, uses that value.
 // Otherwise, uses the current time in nanoseconds for randomness.
