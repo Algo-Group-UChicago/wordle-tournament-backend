@@ -43,5 +43,7 @@ func initializeDynamo() {
 
 	dynamoClient = dynamodb.NewFromConfig(awsCfg, func(o *dynamodb.Options) {
 		o.BaseEndpoint = aws.String(cfg.DynamoDBEndpoint)
+		o.RetryMode = aws.RetryModeStandard
+		o.RetryMaxAttempts = 3
 	})
 }
