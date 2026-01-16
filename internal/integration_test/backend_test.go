@@ -203,8 +203,10 @@ func TestIntegrationInstantSolve(t *testing.T) {
 	if endResponse.Score <= 0 {
 		t.Errorf("End response score should be positive, got %f", endResponse.Score)
 	}
-	if endResponse.Score != endResponse.AverageGuesses {
-		t.Errorf("End response score and averageGuesses should be equal, got score=%f, averageGuesses=%f", endResponse.Score, endResponse.AverageGuesses)
+	// With weighted scoring, score is sum(weight * num_guesses), which may differ from averageGuesses
+	// Score should be positive and reasonable (between 0 and NumTargetWords * max_weight, where max_weight is 1.0)
+	if endResponse.Score > float64(common.NumTargetWords) {
+		t.Errorf("End response score should be reasonable (<= %d), got %f", common.NumTargetWords, endResponse.Score)
 	}
 
 	// Step 8: Verify the correct entry is created in Scores database
@@ -862,8 +864,10 @@ func TestIntegrationMultipleGuessRounds(t *testing.T) {
 	if endResponse.AverageGuesses <= 0 {
 		t.Errorf("End response averageGuesses should be positive, got %f", endResponse.AverageGuesses)
 	}
-	if endResponse.Score != endResponse.AverageGuesses {
-		t.Errorf("End response score and averageGuesses should be equal, got score=%f, averageGuesses=%f", endResponse.Score, endResponse.AverageGuesses)
+	// With weighted scoring, score is sum(weight * num_guesses), which may differ from averageGuesses
+	// Score should be positive and reasonable (between 0 and NumTargetWords * max_weight, where max_weight is 1.0)
+	if endResponse.Score > float64(common.NumTargetWords) {
+		t.Errorf("End response score should be reasonable (<= %d), got %f", common.NumTargetWords, endResponse.Score)
 	}
 
 	// Step 7: Verify the correct entry is created in Scores database

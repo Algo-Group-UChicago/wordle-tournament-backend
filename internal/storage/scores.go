@@ -9,6 +9,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+
+	"wordle-tournament-backend/internal/common"
+	"wordle-tournament-backend/internal/wordle/corpus"
 )
 
 const (
@@ -36,19 +39,29 @@ type ScoreItem struct {
 	CompletedRuns []CompletedRun `dynamodbav:"completed_runs"`
 }
 
-// CalculateScore calculates the total score from a list of GameState entries.
-// Returns the average number of guesses across all games.
+// CalculateScore calculates the weighted score from a list of GameState entries.
+// Returns the sum of (weight * num_guesses) for all solved games.
+// If any game is not solved, returns UnsolvedScoreSentinel.
 func CalculateScore(games []GameState) float64 {
 	if len(games) == 0 {
 		return 0.0
 	}
 
-	totalGuesses := 0.0
+	// Check if all games are solved
 	for _, game := range games {
-		totalGuesses += float64(game.NumGuesses)
+		if !game.Solved {
+			return common.UnsolvedScoreSentinel
+		}
 	}
 
-	return totalGuesses / float64(len(games))
+	// Calculate weighted sum
+	totalScore := 0.0
+	for _, game := range games {
+		weight := corpus.GetWordWeight(game.Answer)
+		totalScore += weight * float64(game.NumGuesses)
+	}
+
+	return totalScore
 }
 
 // GetScore retrieves a ScoreItem from the Scores table by team_id.
