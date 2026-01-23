@@ -9,6 +9,7 @@ import (
 
 	"wordle-tournament-backend/internal/common"
 	"wordle-tournament-backend/internal/storage"
+	"wordle-tournament-backend/internal/wordle/corpus"
 )
 
 type EndRequest struct {
@@ -20,6 +21,19 @@ type EndResponse struct {
 	Score          float64 `json:"score"`
 	AverageGuesses float64 `json:"average_guesses"`
 	Solved         bool    `json:"solved"`
+}
+
+// CalculateScore calculates the weighted score from a list of GameState entries.
+// Returns the sum of (weight * num_guesses) for all solved games.
+func calculateScore(games []storage.GameState) float64 {
+	// Calculate weighted sum
+	totalScore := 0.0
+	for _, game := range games {
+		weight := corpus.GetWordWeight(game.Answer)
+		totalScore += weight * float64(game.NumGuesses)
+	}
+
+	return totalScore
 }
 
 func EndHandler() http.HandlerFunc {
@@ -72,23 +86,28 @@ func handlePostEnd(w http.ResponseWriter, r *http.Request) {
 		totalGuesses += float64(game.NumGuesses)
 	}
 
-	var score, averageGuesses float64
+	var score, avg float64
+	var scorePtr, avgPtr *float64
 	var solved bool
 
 	if allSolved {
-		averageGuesses = totalGuesses / float64(common.NumTargetWords)
-		score = storage.CalculateScore(activeRun.Games)
+		score = calculateScore(activeRun.Games)
+		avg = totalGuesses / float64(common.NumTargetWords)
+		scorePtr = &score
+		avgPtr = &avg
 		solved = true
 	} else {
-		score = common.UnsolvedScoreSentinel
-		averageGuesses = common.UnsolvedScoreSentinel
+		score = 0.0
+		avg = 0.0
+		scorePtr = nil
+		avgPtr = nil
 		solved = false
 	}
 
 	completedRun := storage.CompletedRun{
 		RunID:          req.RunID,
-		Score:          score,
-		AverageGuesses: averageGuesses,
+		Score:          scorePtr,
+		AverageGuesses: avgPtr,
 		Solved:         solved,
 		CompletedAt:    time.Now(),
 	}
@@ -120,7 +139,7 @@ func handlePostEnd(w http.ResponseWriter, r *http.Request) {
 
 	response := EndResponse{
 		Score:          score,
-		AverageGuesses: averageGuesses,
+		AverageGuesses: avg,
 		Solved:         solved,
 	}
 
