@@ -4,7 +4,6 @@ import (
 	_ "embed"
 	"encoding/csv"
 	"log"
-	"math"
 	"strconv"
 	"strings"
 	"sync"
@@ -78,33 +77,22 @@ func loadWeightedAnswers(csvData string) answerWeightsMap {
 	// Skip header row
 	records = records[1:]
 
-	// First pass: calculate log counts and find max
 	result := make(answerWeightsMap, len(records))
-	maxLogCount := 0.0
 
 	for _, record := range records {
-		if len(record) < 2 {
+		if len(record) < 3 {
 			continue
 		}
 		word := record[0]
-		countStr := record[1]
+		weightStr := record[2]
 
-		count, err := strconv.ParseInt(countStr, 10, 64)
+		weight, err := strconv.ParseFloat(weightStr, 64)
 		if err != nil {
-			log.Printf("Warning: failed to parse count for word %s: %v", word, err)
+			log.Printf("Warning: failed to parse weight for word %s: %v", word, err)
 			continue
 		}
 
-		logCount := math.Log(float64(count))
-		result[word] = logCount
-		if logCount > maxLogCount {
-			maxLogCount = logCount
-		}
-	}
-
-	// Second pass: normalize weights in place
-	for word := range result {
-		result[word] = result[word] / maxLogCount
+		result[word] = weight
 	}
 
 	return result

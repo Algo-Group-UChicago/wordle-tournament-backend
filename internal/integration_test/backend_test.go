@@ -203,10 +203,11 @@ func TestIntegrationInstantSolve(t *testing.T) {
 	if endResponse.Score <= 0 {
 		t.Errorf("End response score should be positive, got %f", endResponse.Score)
 	}
-	// With weighted scoring, score is sum(weight * num_guesses), which may differ from averageGuesses
-	// Score should be positive and reasonable (between 0 and NumTargetWords * max_weight, where max_weight is 1.0)
-	if endResponse.Score > float64(common.NumTargetWords) {
-		t.Errorf("End response score should be reasonable (<= %d), got %f", common.NumTargetWords, endResponse.Score)
+	// With weighted scoring, score is sum(weight * num_guesses). Weights come from CSV (e.g. 5–6).
+	// Upper bound: NumTargetWords * max_weight * max_guesses; use 20x as conservative multiplier.
+	maxReasonableScore := float64(common.NumTargetWords) * 20
+	if endResponse.Score > maxReasonableScore {
+		t.Errorf("End response score should be reasonable (<= %.0f), got %f", maxReasonableScore, endResponse.Score)
 	}
 
 	// Step 8: Verify the correct entry is created in Scores database
@@ -864,10 +865,11 @@ func TestIntegrationMultipleGuessRounds(t *testing.T) {
 	if endResponse.AverageGuesses <= 0 {
 		t.Errorf("End response averageGuesses should be positive, got %f", endResponse.AverageGuesses)
 	}
-	// With weighted scoring, score is sum(weight * num_guesses), which may differ from averageGuesses
-	// Score should be positive and reasonable (between 0 and NumTargetWords * max_weight, where max_weight is 1.0)
-	if endResponse.Score > float64(common.NumTargetWords) {
-		t.Errorf("End response score should be reasonable (<= %d), got %f", common.NumTargetWords, endResponse.Score)
+	// With weighted scoring, score is sum(weight * num_guesses). Weights come from CSV (e.g. 5–6).
+	// Upper bound: NumTargetWords * max_weight * max_guesses; use 20x as conservative multiplier.
+	maxReasonableScore := float64(common.NumTargetWords) * 20
+	if endResponse.Score > maxReasonableScore {
+		t.Errorf("End response score should be reasonable (<= %.0f), got %f", maxReasonableScore, endResponse.Score)
 	}
 
 	// Step 7: Verify the correct entry is created in Scores database

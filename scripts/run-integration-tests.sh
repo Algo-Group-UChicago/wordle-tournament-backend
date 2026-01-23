@@ -31,6 +31,6 @@ docker-compose run --rm test
 
 TEST_EXIT_CODE=$?
 
-docker-compose down
+docker-compose down -v
 
 exit $TEST_EXIT_CODE
