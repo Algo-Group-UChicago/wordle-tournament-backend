@@ -203,9 +203,6 @@ func TestIntegrationInstantSolve(t *testing.T) {
 	if endResponse.Score <= 0 {
 		t.Errorf("End response score should be positive, got %f", endResponse.Score)
 	}
-	if endResponse.Score != endResponse.AverageGuesses {
-		t.Errorf("End response score and averageGuesses should be equal, got score=%f, averageGuesses=%f", endResponse.Score, endResponse.AverageGuesses)
-	}
 
 	// Step 8: Verify the correct entry is created in Scores database
 	scoreItem, err := storage.GetScore(teamID)
@@ -228,11 +225,15 @@ func TestIntegrationInstantSolve(t *testing.T) {
 	if !completedRun.Solved {
 		t.Error("CompletedRun should be marked as solved")
 	}
-	if completedRun.Score != endResponse.Score {
-		t.Errorf("CompletedRun Score should be %f, got %f", endResponse.Score, completedRun.Score)
+	if completedRun.Score == nil {
+		t.Error("CompletedRun Score should be set when solved")
+	} else if *completedRun.Score != endResponse.Score {
+		t.Errorf("CompletedRun Score should be %f, got %f", endResponse.Score, *completedRun.Score)
 	}
-	if completedRun.AverageGuesses != endResponse.AverageGuesses {
-		t.Errorf("CompletedRun AverageGuesses should be %f, got %f", endResponse.AverageGuesses, completedRun.AverageGuesses)
+	if completedRun.AverageGuesses == nil {
+		t.Error("CompletedRun AverageGuesses should be set when solved")
+	} else if *completedRun.AverageGuesses != endResponse.AverageGuesses {
+		t.Errorf("CompletedRun AverageGuesses should be %f, got %f", endResponse.AverageGuesses, *completedRun.AverageGuesses)
 	}
 
 	// Step 9: Verify the ActiveRun entry has been removed
@@ -252,8 +253,8 @@ func TestIntegrationInstantSolve(t *testing.T) {
 //  1. Starts a new run by calling POST /api/start with a team_id, receiving a run_id
 //  2. Submits incorrect guesses for some games via POST /api/guesses (not solving all games)
 //  3. Calls POST /api/end to complete the run
-//  4. Verifies the response indicates not all games are solved with UnsolvedScoreSentinel values for score and averageGuesses
-//  5. Verifies a CompletedRun entry is created in Scores database with Solved=false and UnsolvedScoreSentinel values
+//  4. Verifies the response indicates not all games are solved with 0.0 for score and averageGuesses
+//  5. Verifies a CompletedRun entry is created in Scores database with Solved=false and nil Score/AverageGuesses
 func TestIntegrationEndBeforeAllSolved(t *testing.T) {
 	ts := setupIntegrationTest(t)
 	defer ts.Close()
@@ -332,18 +333,18 @@ func TestIntegrationEndBeforeAllSolved(t *testing.T) {
 		t.Fatalf("Failed to decode end response: %v", err)
 	}
 
-	// Step 4: Verify the response indicates not all games are solved with -1.0 values for score and averageGuesses
+	// Step 4: Verify the response indicates not all games are solved with 0.0 for score and averageGuesses
 	if endResponse.Solved {
 		t.Error("End response should indicate not all games are solved")
 	}
-	if endResponse.Score != common.UnsolvedScoreSentinel {
-		t.Errorf("End response score should be %f when not all games solved, got %f", common.UnsolvedScoreSentinel, endResponse.Score)
+	if endResponse.Score != 0.0 {
+		t.Errorf("End response score should be 0 when not all games solved, got %f", endResponse.Score)
 	}
-	if endResponse.AverageGuesses != common.UnsolvedScoreSentinel {
-		t.Errorf("End response averageGuesses should be %f when not all games solved, got %f", common.UnsolvedScoreSentinel, endResponse.AverageGuesses)
+	if endResponse.AverageGuesses != 0.0 {
+		t.Errorf("End response averageGuesses should be 0 when not all games solved, got %f", endResponse.AverageGuesses)
 	}
 
-	// Step 5: Verify a CompletedRun entry is created in Scores database with Solved=false and -1.0 values
+	// Step 5: Verify a CompletedRun entry is created in Scores database with Solved=false and nil Score/AverageGuesses
 	scoreItem, err := storage.GetScore(teamID)
 	if err != nil {
 		t.Fatalf("Failed to get score: %v", err)
@@ -360,11 +361,11 @@ func TestIntegrationEndBeforeAllSolved(t *testing.T) {
 	if completedRun.Solved {
 		t.Error("CompletedRun should be marked as not solved")
 	}
-	if completedRun.Score != common.UnsolvedScoreSentinel {
-		t.Errorf("CompletedRun Score should be %f when not all games solved, got %f", common.UnsolvedScoreSentinel, completedRun.Score)
+	if completedRun.Score != nil {
+		t.Errorf("CompletedRun Score should be nil when not all games solved, got %f", *completedRun.Score)
 	}
-	if completedRun.AverageGuesses != common.UnsolvedScoreSentinel {
-		t.Errorf("CompletedRun AverageGuesses should be %f when not all games solved, got %f", common.UnsolvedScoreSentinel, completedRun.AverageGuesses)
+	if completedRun.AverageGuesses != nil {
+		t.Errorf("CompletedRun AverageGuesses should be nil when not all games solved, got %f", *completedRun.AverageGuesses)
 	}
 }
 
@@ -862,9 +863,6 @@ func TestIntegrationMultipleGuessRounds(t *testing.T) {
 	if endResponse.AverageGuesses <= 0 {
 		t.Errorf("End response averageGuesses should be positive, got %f", endResponse.AverageGuesses)
 	}
-	if endResponse.Score != endResponse.AverageGuesses {
-		t.Errorf("End response score and averageGuesses should be equal, got score=%f, averageGuesses=%f", endResponse.Score, endResponse.AverageGuesses)
-	}
 
 	// Step 7: Verify the correct entry is created in Scores database
 	scoreItem, err := storage.GetScore(teamID)
@@ -887,11 +885,15 @@ func TestIntegrationMultipleGuessRounds(t *testing.T) {
 	if !completedRun.Solved {
 		t.Error("CompletedRun should be marked as solved")
 	}
-	if completedRun.Score != endResponse.Score {
-		t.Errorf("CompletedRun Score should be %f, got %f", endResponse.Score, completedRun.Score)
+	if completedRun.Score == nil {
+		t.Error("CompletedRun Score should be set when solved")
+	} else if *completedRun.Score != endResponse.Score {
+		t.Errorf("CompletedRun Score should be %f, got %f", endResponse.Score, *completedRun.Score)
 	}
-	if completedRun.AverageGuesses != endResponse.AverageGuesses {
-		t.Errorf("CompletedRun AverageGuesses should be %f, got %f", endResponse.AverageGuesses, completedRun.AverageGuesses)
+	if completedRun.AverageGuesses == nil {
+		t.Error("CompletedRun AverageGuesses should be set when solved")
+	} else if *completedRun.AverageGuesses != endResponse.AverageGuesses {
+		t.Errorf("CompletedRun AverageGuesses should be %f, got %f", endResponse.AverageGuesses, *completedRun.AverageGuesses)
 	}
 
 	// Step 8: Verify the ActiveRun entry has been removed

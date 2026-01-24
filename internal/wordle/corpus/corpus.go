@@ -2,22 +2,25 @@ package corpus
 
 import (
 	_ "embed"
+	"encoding/csv"
 	"log"
+	"strconv"
 	"strings"
 	"sync"
 )
 
 type wordSet map[string]struct{}
+type answerWeightsMap map[string]float64
 
 //go:embed corpus.txt
 var corpusData string
 
-//go:embed possible_answers.txt
-var answersData string
+//go:embed possible_answers.csv
+var answersCsvData string
 
 var (
 	corpus          wordSet
-	possibleAnswers []string
+	possibleAnswers answerWeightsMap
 	once            sync.Once
 )
 
@@ -26,9 +29,19 @@ func GetCorpus() wordSet {
 	return corpus
 }
 
-func GetGradingAnswerKey() []string {
+func GetGradingAnswerKey() answerWeightsMap {
 	once.Do(initializeCorpus)
 	return possibleAnswers
+}
+
+// GetWordWeight returns the weight for a given word.
+// Returns 0.0 if the word is not found in the weights map.
+func GetWordWeight(word string) float64 {
+	once.Do(initializeCorpus)
+	if weight, exists := possibleAnswers[word]; exists {
+		return weight
+	}
+	return 0.0
 }
 
 func IsValidWord(word string) bool {
@@ -38,8 +51,8 @@ func IsValidWord(word string) bool {
 
 func initializeCorpus() {
 	corpus = loadToSet(corpusData)
-	possibleAnswers = loadToSlice(answersData)
-	log.Printf("Loaded %d words from corpus and %d possible answers", len(corpus), len(possibleAnswers))
+	possibleAnswers = loadWeightedAnswers(answersCsvData)
+	log.Printf("Loaded %d words from corpus and %d possible answers with weights", len(corpus), len(possibleAnswers))
 }
 
 func loadToSet(data string) wordSet {
@@ -50,6 +63,37 @@ func loadToSet(data string) wordSet {
 	return ws
 }
 
-func loadToSlice(data string) []string {
-	return strings.Fields(strings.ReplaceAll(data, "\n", " "))
+func loadWeightedAnswers(csvData string) answerWeightsMap {
+	reader := csv.NewReader(strings.NewReader(csvData))
+	records, err := reader.ReadAll()
+	if err != nil {
+		log.Fatalf("Failed to parse CSV: %v", err)
+	}
+
+	if len(records) == 0 {
+		log.Fatal("CSV file is empty")
+	}
+
+	// Skip header row
+	records = records[1:]
+
+	result := make(answerWeightsMap, len(records))
+
+	for _, record := range records {
+		if len(record) < 3 {
+			continue
+		}
+		word := record[0]
+		weightStr := record[2]
+
+		weight, err := strconv.ParseFloat(weightStr, 64)
+		if err != nil {
+			log.Printf("Warning: failed to parse weight for word %s: %v", word, err)
+			continue
+		}
+
+		result[word] = weight
+	}
+
+	return result
 }

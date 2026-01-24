@@ -21,10 +21,11 @@ var (
 )
 
 // CompletedRun represents a single completed run for a team.
+// When Solved is true, Score and AverageGuesses are set; when false, both are nil.
 type CompletedRun struct {
 	RunID          string    `dynamodbav:"run_id"`
-	Score          float64   `dynamodbav:"score"`
-	AverageGuesses float64   `dynamodbav:"average_guesses"`
+	Score          *float64  `dynamodbav:"score"`
+	AverageGuesses *float64  `dynamodbav:"average_guesses"`
 	Solved         bool      `dynamodbav:"solved"`
 	CompletedAt    time.Time `dynamodbav:"completed_at"`
 }
@@ -34,21 +35,6 @@ type CompletedRun struct {
 type ScoreItem struct {
 	TeamID        string         `dynamodbav:"team_id"`
 	CompletedRuns []CompletedRun `dynamodbav:"completed_runs"`
-}
-
-// CalculateScore calculates the total score from a list of GameState entries.
-// Returns the average number of guesses across all games.
-func CalculateScore(games []GameState) float64 {
-	if len(games) == 0 {
-		return 0.0
-	}
-
-	totalGuesses := 0.0
-	for _, game := range games {
-		totalGuesses += float64(game.NumGuesses)
-	}
-
-	return totalGuesses / float64(len(games))
 }
 
 // GetScore retrieves a ScoreItem from the Scores table by team_id.

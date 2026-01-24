@@ -37,7 +37,13 @@ type ActiveRunItem struct {
 // createDefaultGames returns a slice of GameState entries, each containing
 // a unique randomly selected answer from the corpus.
 func createDefaultGameStates() []GameState {
-	possibleAnswers := corpus.GetGradingAnswerKey()
+	possibleAnswersMap := corpus.GetGradingAnswerKey()
+
+	// Convert map keys to slice for random selection (maps aren't indexable)
+	possibleAnswers := make([]string, 0, len(possibleAnswersMap))
+	for word := range possibleAnswersMap {
+		possibleAnswers = append(possibleAnswers, word)
+	}
 
 	rng := rand.New(rand.NewSource(common.GetSeed()))
 	selected := make(map[string]bool)

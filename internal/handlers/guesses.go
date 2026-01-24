@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strings"
 	"wordle-tournament-backend/internal/common"
@@ -50,6 +51,8 @@ func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "run_id cannot be empty", http.StatusBadRequest)
 		return
 	}
+
+	log.Printf("guesses: TeamID=%s RunID=%s", req.TeamId, req.RunId)
 
 	if err := wordle.ValidateGuesses(req.Guesses); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
