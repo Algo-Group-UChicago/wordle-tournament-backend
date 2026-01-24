@@ -40,9 +40,7 @@ func handlePostStart(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
-
 	runID := uuid.New().String()
-
 	if err := storage.PutDefaultActiveRun(req.TeamID, runID); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

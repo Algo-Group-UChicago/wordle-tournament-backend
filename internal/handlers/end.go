@@ -24,16 +24,20 @@ type EndResponse struct {
 }
 
 // CalculateScore calculates the weighted score from a list of GameState entries.
-// Returns the sum of (weight * num_guesses) for all solved games.
+// Returns the average of (weight * num_guesses) for all solved games.
 func calculateScore(games []storage.GameState) float64 {
-	// Calculate weighted sum
+	if len(games) == 0 {
+		return 0.0
+	}
+	sumOfWeights := 0.0
 	totalScore := 0.0
 	for _, game := range games {
 		weight := corpus.GetWordWeight(game.Answer)
 		totalScore += weight * float64(game.NumGuesses)
+		sumOfWeights += weight
 	}
 
-	return totalScore
+	return totalScore / sumOfWeights
 }
 
 func EndHandler() http.HandlerFunc {
