@@ -11,8 +11,8 @@ import (
 )
 
 type GuessesRequest struct {
-	TeamId  string   `json:"team_id"`
-	RunId   string   `json:"run_id"`
+	TeamID  string   `json:"team_id"`
+	RunID   string   `json:"run_id"`
 	Guesses []string `json:"guesses"`
 }
 
@@ -42,24 +42,24 @@ func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.TeamId == "" {
+	if req.TeamID == "" {
 		http.Error(w, "team_id cannot be empty", http.StatusBadRequest)
 		return
 	}
 
-	if req.RunId == "" {
+	if req.RunID == "" {
 		http.Error(w, "run_id cannot be empty", http.StatusBadRequest)
 		return
 	}
 
-	log.Printf("guesses: TeamID=%s RunID=%s", req.TeamId, req.RunId)
+	log.Printf("guesses: TeamID=%s RunID=%s", req.TeamID, req.RunID)
 
 	if err := wordle.ValidateGuesses(req.Guesses); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	activeRun, err := storage.GetActiveRun(req.TeamId, req.RunId)
+	activeRun, err := storage.GetActiveRun(req.TeamID, req.RunID)
 	if err != nil {
 		// Must distinguish between (team_id, run_id) being invalid and network issues causing the request to fail.
 		statusCode := http.StatusInternalServerError
