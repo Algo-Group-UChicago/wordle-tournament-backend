@@ -3,11 +3,12 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
 
-	"wordle-tournament-backend/internal/common"
+	. "wordle-tournament-backend/internal/common"
 	"wordle-tournament-backend/internal/storage"
 	"wordle-tournament-backend/internal/wordle/corpus"
 )
@@ -54,19 +55,24 @@ func EndHandler() http.HandlerFunc {
 func handlePostEnd(w http.ResponseWriter, r *http.Request) {
 	var req EndRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		LogWarning("end", err.Error(), http.StatusBadRequest)
 		http.Error(w, "Invalid json body", http.StatusBadRequest)
 		return
 	}
 
 	if req.TeamID == "" {
+		LogWarning("end", errors.New("team_id cannot be empty").Error(), http.StatusBadRequest)
 		http.Error(w, "team_id cannot be empty", http.StatusBadRequest)
 		return
 	}
 
 	if req.RunID == "" {
+		LogWarning("end", errors.New("run_id cannot be empty").Error(), http.StatusBadRequest, slog.String("team_id", req.TeamID))
 		http.Error(w, "run_id cannot be empty", http.StatusBadRequest)
 		return
 	}
+
+	LogInfo("end", "entry", slog.String("team_id", req.TeamID), slog.String("run_id", req.RunID))
 
 	// Query ActiveRuns database
 	activeRun, err := storage.GetActiveRun(req.TeamID, req.RunID)
@@ -74,6 +80,13 @@ func handlePostEnd(w http.ResponseWriter, r *http.Request) {
 		statusCode := http.StatusInternalServerError
 		if strings.Contains(err.Error(), "expired or not found") {
 			statusCode = http.StatusBadRequest
+		}
+
+		// StatusCode < 500 differentiates between client and server errors
+		if statusCode < 500 {
+			LogWarning("end", err.Error(), statusCode, slog.String("team_id", req.TeamID), slog.String("run_id", req.RunID))
+		} else {
+			LogError("end", err.Error(), statusCode, slog.String("team_id", req.TeamID), slog.String("run_id", req.RunID))
 		}
 		http.Error(w, err.Error(), statusCode)
 		return
@@ -96,7 +109,7 @@ func handlePostEnd(w http.ResponseWriter, r *http.Request) {
 
 	if allSolved {
 		score = calculateScore(activeRun.Games)
-		avg = totalGuesses / float64(common.NumTargetWords)
+		avg = totalGuesses / float64(NumTargetWords)
 		scorePtr = &score
 		avgPtr = &avg
 		solved = true
@@ -124,6 +137,7 @@ func handlePostEnd(w http.ResponseWriter, r *http.Request) {
 				CompletedRuns: []storage.CompletedRun{completedRun},
 			}
 		} else {
+			LogError("end", err.Error(), http.StatusInternalServerError, slog.String("team_id", req.TeamID), slog.String("run_id", req.RunID))
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -132,11 +146,13 @@ func handlePostEnd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := storage.PutScore(scoreItem); err != nil {
+		LogError("end", err.Error(), http.StatusInternalServerError, slog.String("team_id", req.TeamID), slog.String("run_id", req.RunID))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	if err := storage.RemoveActiveRun(req.TeamID, req.RunID); err != nil {
+		LogError("end", err.Error(), http.StatusInternalServerError, slog.String("team_id", req.TeamID), slog.String("run_id", req.RunID))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
