@@ -13,16 +13,15 @@ import (
 // while LogErrors result from server errors.
 
 func LogInfo(endpoint string, msg string, attrs ...slog.Attr) {
-	all := make([]slog.Attr, 0, 2+len(attrs))
-	all = append(all, slog.String("msg", msg), slog.String("endpoint", endpoint))
+	all := make([]slog.Attr, 0, 1+len(attrs))
+	all = append(all, slog.String("endpoint", endpoint))
 	all = append(all, attrs...)
 	slog.Default().LogAttrs(context.Background(), slog.LevelInfo, msg, all...)
 }
 
 func LogWarning(endpoint string, msg string, status int, attrs ...slog.Attr) {
-	all := make([]slog.Attr, 0, 3+len(attrs))
+	all := make([]slog.Attr, 0, 2+len(attrs))
 	all = append(all,
-		slog.String("msg", msg),
 		slog.String("endpoint", endpoint),
 		slog.Int("status", status),
 	)
@@ -31,9 +30,8 @@ func LogWarning(endpoint string, msg string, status int, attrs ...slog.Attr) {
 }
 
 func LogError(endpoint string, msg string, status int, attrs ...slog.Attr) {
-	all := make([]slog.Attr, 0, 3+len(attrs))
+	all := make([]slog.Attr, 0, 2+len(attrs))
 	all = append(all,
-		slog.String("msg", msg),
 		slog.String("endpoint", endpoint),
 		slog.Int("status", status),
 	)
