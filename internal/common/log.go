@@ -11,28 +11,31 @@ import (
 
 // Difference between LogWarning and LogError is that LogWarnings result from malformed requests,
 // while LogErrors result from server errors.
+//
+// source is the HTTP endpoint (e.g. "start", "end") or the module (e.g. "main", "corpus").
+// For non-request logs, status can be 0 (or 500 for errors) to indicate N/A.
 
-func LogInfo(endpoint string, msg string, attrs ...slog.Attr) {
+func LogInfo(source string, msg string, attrs ...slog.Attr) {
 	all := make([]slog.Attr, 0, 1+len(attrs))
-	all = append(all, slog.String("endpoint", endpoint))
+	all = append(all, slog.String("source", source))
 	all = append(all, attrs...)
 	slog.Default().LogAttrs(context.Background(), slog.LevelInfo, msg, all...)
 }
 
-func LogWarning(endpoint string, msg string, status int, attrs ...slog.Attr) {
+func LogWarning(source string, msg string, status int, attrs ...slog.Attr) {
 	all := make([]slog.Attr, 0, 2+len(attrs))
 	all = append(all,
-		slog.String("endpoint", endpoint),
+		slog.String("source", source),
 		slog.Int("status", status),
 	)
 	all = append(all, attrs...)
 	slog.Default().LogAttrs(context.Background(), slog.LevelWarn, msg, all...)
 }
 
-func LogError(endpoint string, msg string, status int, attrs ...slog.Attr) {
+func LogError(source string, msg string, status int, attrs ...slog.Attr) {
 	all := make([]slog.Attr, 0, 2+len(attrs))
 	all = append(all,
-		slog.String("endpoint", endpoint),
+		slog.String("source", source),
 		slog.Int("status", status),
 	)
 	all = append(all, attrs...)

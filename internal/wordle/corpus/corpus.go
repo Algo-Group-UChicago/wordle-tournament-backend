@@ -3,10 +3,14 @@ package corpus
 import (
 	_ "embed"
 	"encoding/csv"
-	"log"
+	"fmt"
+	"log/slog"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
+
+	"wordle-tournament-backend/internal/common"
 )
 
 type wordSet map[string]struct{}
@@ -52,7 +56,7 @@ func IsValidWord(word string) bool {
 func initializeCorpus() {
 	corpus = loadToSet(corpusData)
 	possibleAnswers = loadWeightedAnswers(answersCsvData)
-	log.Printf("Loaded %d words from corpus and %d possible answers with weights", len(corpus), len(possibleAnswers))
+	common.LogInfo("corpus", fmt.Sprintf("Loaded %d words from corpus and %d possible answers with weights", len(corpus), len(possibleAnswers)))
 }
 
 func loadToSet(data string) wordSet {
@@ -67,11 +71,13 @@ func loadWeightedAnswers(csvData string) answerWeightsMap {
 	reader := csv.NewReader(strings.NewReader(csvData))
 	records, err := reader.ReadAll()
 	if err != nil {
-		log.Fatalf("Failed to parse CSV: %v", err)
+		common.LogError("corpus", "Failed to parse CSV", 0, slog.String("error", err.Error()))
+		os.Exit(1)
 	}
 
 	if len(records) == 0 {
-		log.Fatal("CSV file is empty")
+		common.LogError("corpus", "CSV file is empty", 0)
+		os.Exit(1)
 	}
 
 	// Skip header row
@@ -88,7 +94,7 @@ func loadWeightedAnswers(csvData string) answerWeightsMap {
 
 		weight, err := strconv.ParseFloat(weightStr, 64)
 		if err != nil {
-			log.Printf("Warning: failed to parse weight for word %s: %v", word, err)
+			common.LogWarning("corpus", "failed to parse weight for word", 0, slog.String("word", word), slog.String("error", err.Error()))
 			continue
 		}
 
