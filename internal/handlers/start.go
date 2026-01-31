@@ -48,7 +48,7 @@ func handlePostStart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	runID := uuid.New().String()
-	LogInfo("start", "entry", slog.String("team_id", req.TeamID), slog.String("run_id", runID))
+	LogInfo("start", "entered start handler", slog.String("team_id", req.TeamID), slog.String("run_id", runID))
 	if err := storage.PutDefaultActiveRun(req.TeamID, runID); err != nil {
 		LogError("start", err.Error(), http.StatusInternalServerError, slog.String("team_id", req.TeamID), slog.String("run_id", runID))
 		http.Error(w, err.Error(), http.StatusInternalServerError)

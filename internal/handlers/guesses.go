@@ -58,7 +58,7 @@ func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	LogInfo("guesses", "entry", slog.String("team_id", req.TeamID), slog.String("run_id", req.RunID))
+	LogInfo("guesses", "entered guesses handler", slog.String("team_id", req.TeamID), slog.String("run_id", req.RunID))
 
 	if err := wordle.ValidateGuesses(req.Guesses); err != nil {
 		LogWarning("guesses", err.Error(), http.StatusBadRequest, slog.String("team_id", req.TeamID), slog.String("run_id", req.RunID))

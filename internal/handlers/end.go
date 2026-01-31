@@ -72,7 +72,7 @@ func handlePostEnd(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	LogInfo("end", "entry", slog.String("team_id", req.TeamID), slog.String("run_id", req.RunID))
+	LogInfo("end", "entered end handler", slog.String("team_id", req.TeamID), slog.String("run_id", req.RunID))
 
 	// Query ActiveRuns database
 	activeRun, err := storage.GetActiveRun(req.TeamID, req.RunID)
