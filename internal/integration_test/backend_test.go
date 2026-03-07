@@ -105,8 +105,8 @@ func TestIntegrationInstantSolve(t *testing.T) {
 
 	// Step 4: Submit all perfect guesses via POST /api/guesses
 	guessesReq := handlers.GuessesRequest{
-		TeamId:  teamID,
-		RunId:   runID,
+		TeamID:  teamID,
+		RunID:   runID,
 		Guesses: guesses,
 	}
 
@@ -290,8 +290,8 @@ func TestIntegrationEndBeforeAllSolved(t *testing.T) {
 	}
 
 	guessesReq := handlers.GuessesRequest{
-		TeamId:  teamID,
-		RunId:   runID,
+		TeamID:  teamID,
+		RunID:   runID,
 		Guesses: guesses,
 	}
 
@@ -418,8 +418,8 @@ func TestIntegrationEndCalledTwice(t *testing.T) {
 
 	// Step 3: Submit all perfect guesses via POST /api/guesses to solve all games
 	guessesReq := handlers.GuessesRequest{
-		TeamId:  teamID,
-		RunId:   runID,
+		TeamID:  teamID,
+		RunID:   runID,
 		Guesses: guesses,
 	}
 
@@ -524,8 +524,8 @@ func TestIntegrationGuessesAfterEnd(t *testing.T) {
 
 	// Step 3: Submit all perfect guesses via POST /api/guesses to solve all games
 	guessesReq := handlers.GuessesRequest{
-		TeamId:  teamID,
-		RunId:   runID,
+		TeamID:  teamID,
+		RunID:   runID,
 		Guesses: guesses,
 	}
 
@@ -620,8 +620,8 @@ func TestIntegrationGuessesArrayLengthMismatch(t *testing.T) {
 	}
 
 	guessesReq := handlers.GuessesRequest{
-		TeamId:  teamID,
-		RunId:   runID,
+		TeamID:  teamID,
+		RunID:   runID,
 		Guesses: guesses,
 	}
 
@@ -693,8 +693,8 @@ func TestIntegrationMultipleGuessRounds(t *testing.T) {
 	}
 
 	guessesReq := handlers.GuessesRequest{
-		TeamId:  teamID,
-		RunId:   runID,
+		TeamID:  teamID,
+		RunID:   runID,
 		Guesses: guesses,
 	}
 

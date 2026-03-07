@@ -55,7 +55,8 @@ services:
       - AWS_SECRET_ACCESS_KEY=dummy
       - AWS_REGION=us-east-1
     depends_on:
-      - setup-local-db
+      setup-local-db:
+        condition: service_completed_successfully
     ports:
       - "8080:8080"
 
