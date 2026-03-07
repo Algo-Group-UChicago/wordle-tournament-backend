@@ -55,7 +55,7 @@ func IsValidWord(word string) bool {
 func initializeCorpus() {
 	corpus = loadToSet(corpusData)
 	possibleAnswers = loadWeightedAnswers(answersCsvData)
-	common.LogInfo("corpus", &common.LogData{Msg: fmt.Sprintf("Loaded %d words from corpus and %d possible answers with weights", len(corpus), len(possibleAnswers))})
+	common.LogInfo("CorpusLoadSuccess", &common.LogData{Msg: fmt.Sprintf("Loaded %d words from corpus and %d possible answers with weights", len(corpus), len(possibleAnswers))})
 }
 
 func loadToSet(data string) wordSet {
@@ -70,12 +70,12 @@ func loadWeightedAnswers(csvData string) answerWeightsMap {
 	reader := csv.NewReader(strings.NewReader(csvData))
 	records, err := reader.ReadAll()
 	if err != nil {
-		common.LogError("corpus", &common.LogData{Msg: "Failed to parse CSV"})
+		common.LogError("CorpusParseCSVFailure", &common.LogData{Msg: "Failed to parse CSV"})
 		os.Exit(1)
 	}
 
 	if len(records) == 0 {
-		common.LogError("corpus", &common.LogData{Msg: "CSV file is empty"})
+		common.LogError("CorpusEmptyCSVFile", &common.LogData{Msg: "CSV file is empty"})
 		os.Exit(1)
 	}
 

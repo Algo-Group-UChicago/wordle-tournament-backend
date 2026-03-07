@@ -41,5 +41,6 @@ func logWithLevel(level slog.Level, name string, data *LogData) {
 		}
 	}
 
-	slog.Default().LogAttrs(context.Background(), level, name, attrs...)
+	// Empty msg parameter to avoid automatic "msg=..." field in logs
+	slog.Default().LogAttrs(context.Background(), level, "", attrs...)
 }
