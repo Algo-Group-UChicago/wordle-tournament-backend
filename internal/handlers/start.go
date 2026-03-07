@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"log/slog"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -27,7 +26,7 @@ func StartHandler() http.HandlerFunc {
 		case http.MethodPost:
 			handlePostStart(w, r)
 		default:
-			LogWarning("start", errors.New("method not allowed").Error(), http.StatusMethodNotAllowed)
+			LogWarning("start", &LogData{Msg: errors.New("method not allowed").Error()})
 			http.Error(w, "HTTP Method not allowed", http.StatusMethodNotAllowed)
 		}
 	}
@@ -36,21 +35,21 @@ func StartHandler() http.HandlerFunc {
 func handlePostStart(w http.ResponseWriter, r *http.Request) {
 	var req StartRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		LogWarning("start", err.Error(), http.StatusBadRequest)
+		LogWarning("start", &LogData{Msg: err.Error()})
 		http.Error(w, "Invalid json body", http.StatusBadRequest)
 		return
 	}
 
 	if err := wordle.ValidateTeamId(req.TeamID); err != nil {
-		LogWarning("start", err.Error(), http.StatusUnauthorized, slog.String("team_id", req.TeamID))
+		LogWarning("start", &LogData{TeamID: req.TeamID, Msg: err.Error()})
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	runID := uuid.New().String()
-	LogInfo("start", "entered start handler", slog.String("team_id", req.TeamID), slog.String("run_id", runID))
+	LogInfo("start", &LogData{TeamID: req.TeamID, RunID: runID, Msg: "entered start handler"})
 	if err := storage.PutDefaultActiveRun(req.TeamID, runID); err != nil {
-		LogError("start", err.Error(), http.StatusInternalServerError, slog.String("team_id", req.TeamID), slog.String("run_id", runID))
+		LogError("start", &LogData{TeamID: req.TeamID, RunID: runID, Msg: err.Error()})
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

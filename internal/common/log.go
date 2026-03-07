@@ -9,35 +9,37 @@ import (
 // - Though exclusively used in the handlers, doesn't make sense to scope it there.
 // - Reduce module bloat with another `logging` module
 
-// Difference between LogWarning and LogError is that LogWarnings result from malformed requests,
-// while LogErrors result from server errors.
-//
-// source is the HTTP endpoint (e.g. "start", "end") or the module (e.g. "main", "corpus").
-// For non-request logs, status can be 0 (or 500 for errors) to indicate N/A.
-
-func LogInfo(source string, msg string, attrs ...slog.Attr) {
-	all := make([]slog.Attr, 0, 1+len(attrs))
-	all = append(all, slog.String("source", source))
-	all = append(all, attrs...)
-	slog.Default().LogAttrs(context.Background(), slog.LevelInfo, msg, all...)
+type LogData struct {
+	TeamID string
+	RunID  string
+	Msg    string
 }
 
-func LogWarning(source string, msg string, status int, attrs ...slog.Attr) {
-	all := make([]slog.Attr, 0, 2+len(attrs))
-	all = append(all,
-		slog.String("source", source),
-		slog.Int("status", status),
-	)
-	all = append(all, attrs...)
-	slog.Default().LogAttrs(context.Background(), slog.LevelWarn, msg, all...)
+func LogInfo(name string, data *LogData) {
+	logWithLevel(slog.LevelInfo, name, data)
 }
 
-func LogError(source string, msg string, status int, attrs ...slog.Attr) {
-	all := make([]slog.Attr, 0, 2+len(attrs))
-	all = append(all,
-		slog.String("source", source),
-		slog.Int("status", status),
-	)
-	all = append(all, attrs...)
-	slog.Default().LogAttrs(context.Background(), slog.LevelError, msg, all...)
+func LogWarning(name string, data *LogData) {
+	logWithLevel(slog.LevelWarn, name, data)
+}
+
+func LogError(name string, data *LogData) {
+	logWithLevel(slog.LevelError, name, data)
+}
+
+func logWithLevel(level slog.Level, name string, data *LogData) {
+	attrs := []slog.Attr{slog.String("name", name)}
+	if data != nil {
+		if data.TeamID != "" {
+			attrs = append(attrs, slog.String("team_id", data.TeamID))
+		}
+		if data.RunID != "" {
+			attrs = append(attrs, slog.String("run_id", data.RunID))
+		}
+		if data.Msg != "" {
+			attrs = append(attrs, slog.String("msg", data.Msg))
+		}
+	}
+
+	slog.Default().LogAttrs(context.Background(), level, name, attrs...)
 }

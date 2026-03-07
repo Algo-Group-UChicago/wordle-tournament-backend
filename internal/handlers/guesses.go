@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"log/slog"
 	"net/http"
 	"strings"
 	"wordle-tournament-backend/internal/common"
@@ -28,7 +27,7 @@ func GuessesHandler() http.HandlerFunc {
 		case http.MethodPost:
 			handlePostGuesses(w, r)
 		default:
-			LogWarning("guesses", errors.New("method not allowed").Error(), http.StatusMethodNotAllowed)
+			LogWarning("guesses", &LogData{Msg: errors.New("method not allowed").Error()})
 			http.Error(w, "HTTP Method not allowed", http.StatusMethodNotAllowed)
 		}
 	}
@@ -41,27 +40,27 @@ func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
 	// TODO: uppercase guesses will FAIL
 	var req GuessesRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		LogWarning("guesses", err.Error(), http.StatusBadRequest)
+		LogWarning("guesses", &LogData{Msg: err.Error()})
 		http.Error(w, "Invalid json body", http.StatusBadRequest)
 		return
 	}
 
 	if req.TeamID == "" {
-		LogWarning("guesses", errors.New("team_id cannot be empty").Error(), http.StatusBadRequest)
+		LogWarning("guesses", &LogData{Msg: errors.New("team_id cannot be empty").Error()})
 		http.Error(w, "team_id cannot be empty", http.StatusBadRequest)
 		return
 	}
 
 	if req.RunID == "" {
-		LogWarning("guesses", errors.New("run_id cannot be empty").Error(), http.StatusBadRequest, slog.String("team_id", req.TeamID))
+		LogWarning("guesses", &LogData{TeamID: req.TeamID, Msg: errors.New("run_id cannot be empty").Error()})
 		http.Error(w, "run_id cannot be empty", http.StatusBadRequest)
 		return
 	}
 
-	LogInfo("guesses", "entered guesses handler", slog.String("team_id", req.TeamID), slog.String("run_id", req.RunID))
+	LogInfo("guesses", &LogData{TeamID: req.TeamID, RunID: req.RunID, Msg: "entered guesses handler"})
 
 	if err := wordle.ValidateGuesses(req.Guesses); err != nil {
-		LogWarning("guesses", err.Error(), http.StatusBadRequest, slog.String("team_id", req.TeamID), slog.String("run_id", req.RunID))
+		LogWarning("guesses", &LogData{TeamID: req.TeamID, RunID: req.RunID, Msg: err.Error()})
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -74,9 +73,9 @@ func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
 			statusCode = http.StatusBadRequest
 		}
 		if statusCode < 500 {
-			LogWarning("guesses", err.Error(), statusCode, slog.String("team_id", req.TeamID), slog.String("run_id", req.RunID))
+			LogWarning("guesses", &LogData{TeamID: req.TeamID, RunID: req.RunID, Msg: err.Error()})
 		} else {
-			LogError("guesses", err.Error(), statusCode, slog.String("team_id", req.TeamID), slog.String("run_id", req.RunID))
+			LogError("guesses", &LogData{TeamID: req.TeamID, RunID: req.RunID, Msg: err.Error()})
 		}
 		http.Error(w, err.Error(), statusCode)
 		return
@@ -106,7 +105,7 @@ func handlePostGuesses(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := storage.PutActiveRun(activeRun); err != nil {
-		LogError("guesses", err.Error(), http.StatusInternalServerError, slog.String("team_id", req.TeamID), slog.String("run_id", req.RunID))
+		LogError("guesses", &LogData{TeamID: req.TeamID, RunID: req.RunID, Msg: err.Error()})
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

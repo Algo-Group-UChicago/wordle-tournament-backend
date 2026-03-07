@@ -3,7 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -55,40 +54,36 @@ func EndHandler() http.HandlerFunc {
 func handlePostEnd(w http.ResponseWriter, r *http.Request) {
 	var req EndRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		LogWarning("end", err.Error(), http.StatusBadRequest)
+		LogWarning("EndInvalidRequest", &LogData{Msg: err.Error()})
 		http.Error(w, "Invalid json body", http.StatusBadRequest)
 		return
 	}
 
 	if req.TeamID == "" {
-		LogWarning("end", errors.New("team_id cannot be empty").Error(), http.StatusBadRequest)
+		LogWarning("EndInvalidRequest", &LogData{Msg: "empty team_id"})
 		http.Error(w, "team_id cannot be empty", http.StatusBadRequest)
 		return
 	}
 
 	if req.RunID == "" {
-		LogWarning("end", errors.New("run_id cannot be empty").Error(), http.StatusBadRequest, slog.String("team_id", req.TeamID))
+		LogWarning("EndInvalidRequest", &LogData{TeamID: req.TeamID, Msg: "empty run_id"})
 		http.Error(w, "run_id cannot be empty", http.StatusBadRequest)
 		return
 	}
 
-	LogInfo("end", "entered end handler", slog.String("team_id", req.TeamID), slog.String("run_id", req.RunID))
+	LogInfo("EndProcessingRequest", &LogData{TeamID: req.TeamID, RunID: req.RunID})
 
 	// Query ActiveRuns database
 	activeRun, err := storage.GetActiveRun(req.TeamID, req.RunID)
 	if err != nil {
-		statusCode := http.StatusInternalServerError
-		if strings.Contains(err.Error(), "expired or not found") {
-			statusCode = http.StatusBadRequest
-		}
-
-		// StatusCode < 500 differentiates between client and server errors
-		if statusCode < 500 {
-			LogWarning("end", err.Error(), statusCode, slog.String("team_id", req.TeamID), slog.String("run_id", req.RunID))
+		isClientError := strings.Contains(err.Error(), "expired or not found")
+		if isClientError {
+			LogWarning("EndInvalidIDs", &LogData{TeamID: req.TeamID, RunID: req.RunID, Msg: err.Error()})
+			http.Error(w, err.Error(), http.StatusBadRequest)
 		} else {
-			LogError("end", err.Error(), statusCode, slog.String("team_id", req.TeamID), slog.String("run_id", req.RunID))
+			LogError("EndInternalError", &LogData{TeamID: req.TeamID, RunID: req.RunID, Msg: err.Error()})
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-		http.Error(w, err.Error(), statusCode)
 		return
 	}
 
@@ -137,7 +132,7 @@ func handlePostEnd(w http.ResponseWriter, r *http.Request) {
 				CompletedRuns: []storage.CompletedRun{completedRun},
 			}
 		} else {
-			LogError("end", err.Error(), http.StatusInternalServerError, slog.String("team_id", req.TeamID), slog.String("run_id", req.RunID))
+			LogError("End", &LogData{TeamID: req.TeamID, RunID: req.RunID, Msg: err.Error()})
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -146,13 +141,13 @@ func handlePostEnd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := storage.PutScore(scoreItem); err != nil {
-		LogError("end", err.Error(), http.StatusInternalServerError, slog.String("team_id", req.TeamID), slog.String("run_id", req.RunID))
+		LogError("end", &LogData{TeamID: req.TeamID, RunID: req.RunID, Msg: err.Error()})
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	if err := storage.RemoveActiveRun(req.TeamID, req.RunID); err != nil {
-		LogError("end", err.Error(), http.StatusInternalServerError, slog.String("team_id", req.TeamID), slog.String("run_id", req.RunID))
+		LogError("end", &LogData{TeamID: req.TeamID, RunID: req.RunID, Msg: err.Error()})
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}

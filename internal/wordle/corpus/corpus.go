@@ -4,7 +4,6 @@ import (
 	_ "embed"
 	"encoding/csv"
 	"fmt"
-	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -56,7 +55,7 @@ func IsValidWord(word string) bool {
 func initializeCorpus() {
 	corpus = loadToSet(corpusData)
 	possibleAnswers = loadWeightedAnswers(answersCsvData)
-	common.LogInfo("corpus", fmt.Sprintf("Loaded %d words from corpus and %d possible answers with weights", len(corpus), len(possibleAnswers)))
+	common.LogInfo("corpus", &common.LogData{Msg: fmt.Sprintf("Loaded %d words from corpus and %d possible answers with weights", len(corpus), len(possibleAnswers))})
 }
 
 func loadToSet(data string) wordSet {
@@ -71,12 +70,12 @@ func loadWeightedAnswers(csvData string) answerWeightsMap {
 	reader := csv.NewReader(strings.NewReader(csvData))
 	records, err := reader.ReadAll()
 	if err != nil {
-		common.LogError("corpus", "Failed to parse CSV", 0, slog.String("error", err.Error()))
+		common.LogError("corpus", &common.LogData{Msg: "Failed to parse CSV"})
 		os.Exit(1)
 	}
 
 	if len(records) == 0 {
-		common.LogError("corpus", "CSV file is empty", 0)
+		common.LogError("corpus", &common.LogData{Msg: "CSV file is empty"})
 		os.Exit(1)
 	}
 
@@ -94,7 +93,7 @@ func loadWeightedAnswers(csvData string) answerWeightsMap {
 
 		weight, err := strconv.ParseFloat(weightStr, 64)
 		if err != nil {
-			common.LogWarning("corpus", "failed to parse weight for word", 0, slog.String("word", word), slog.String("error", err.Error()))
+			common.LogWarning("corpus", &common.LogData{Msg: "failed to parse weight for word"})
 			continue
 		}
 
