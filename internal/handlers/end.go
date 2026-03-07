@@ -90,7 +90,7 @@ func handlePostEnd(w http.ResponseWriter, r *http.Request) {
 			LogWarning("EndInvalidIDs", &LogData{TeamID: req.TeamID, RunID: req.RunID, Msg: err.Error()})
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		} else {
-			LogError("EndInternalError", &LogData{TeamID: req.TeamID, RunID: req.RunID, Msg: err.Error()})
+			LogError("EndActiveRunNotFound", &LogData{TeamID: req.TeamID, RunID: req.RunID, Msg: err.Error()})
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
@@ -145,7 +145,7 @@ func handlePostEnd(w http.ResponseWriter, r *http.Request) {
 				CompletedRuns: []storage.CompletedRun{completedRun},
 			}
 		} else {
-			LogError("EndInternalError", &LogData{TeamID: req.TeamID, RunID: req.RunID, Msg: err.Error()})
+			LogError("EndScoreNotFound", &LogData{TeamID: req.TeamID, RunID: req.RunID, Msg: err.Error()})
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -155,14 +155,14 @@ func handlePostEnd(w http.ResponseWriter, r *http.Request) {
 
 	// Update the Scores database with the new run history
 	if err := storage.PutScore(scoreItem); err != nil {
-		LogError("EndInternalError	", &LogData{TeamID: req.TeamID, RunID: req.RunID, Msg: err.Error()})
+		LogError("EndUpdateScoreFailure", &LogData{TeamID: req.TeamID, RunID: req.RunID, Msg: err.Error()})
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// Remove the run from the ActiveRuns database
 	if err := storage.RemoveActiveRun(req.TeamID, req.RunID); err != nil {
-		LogError("EndInternalError", &LogData{TeamID: req.TeamID, RunID: req.RunID, Msg: err.Error()})
+		LogError("EndRemoveActiveRunFailure", &LogData{TeamID: req.TeamID, RunID: req.RunID, Msg: err.Error()})
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
