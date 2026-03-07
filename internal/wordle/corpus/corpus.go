@@ -93,7 +93,7 @@ func loadWeightedAnswers(csvData string) answerWeightsMap {
 
 		weight, err := strconv.ParseFloat(weightStr, 64)
 		if err != nil {
-			common.LogWarning("corpus", &common.LogData{Msg: "failed to parse weight for word"})
+			common.LogWarning("CorpusParseWeightFailure", &common.LogData{Msg: "failed to parse weight for word " + word})
 			continue
 		}
 

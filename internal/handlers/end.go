@@ -46,6 +46,7 @@ func EndHandler() http.HandlerFunc {
 		case http.MethodPost:
 			handlePostEnd(w, r)
 		default:
+			LogWarning("EndInvalidRequest", &LogData{Msg: "method not allowed"})
 			http.Error(w, "HTTP Method not allowed", http.StatusMethodNotAllowed)
 		}
 	}
@@ -69,13 +70,13 @@ func handlePostEnd(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.TeamID == "" {
-		LogWarning("EndInvalidRequest", &LogData{Msg: "empty team_id"})
+		LogWarning("EndEmptyTeamID", &LogData{})
 		http.Error(w, "team_id cannot be empty", http.StatusBadRequest)
 		return
 	}
 
 	if req.RunID == "" {
-		LogWarning("EndInvalidRequest", &LogData{TeamID: req.TeamID, Msg: "empty run_id"})
+		LogWarning("EndEmptyRunID", &LogData{TeamID: req.TeamID})
 		http.Error(w, "run_id cannot be empty", http.StatusBadRequest)
 		return
 	}
@@ -90,7 +91,7 @@ func handlePostEnd(w http.ResponseWriter, r *http.Request) {
 			LogWarning("EndInvalidIDs", &LogData{TeamID: req.TeamID, RunID: req.RunID, Msg: err.Error()})
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		} else {
-			LogError("EndActiveRunNotFound", &LogData{TeamID: req.TeamID, RunID: req.RunID, Msg: err.Error()})
+			LogError("EndGetActiveRunFailure", &LogData{TeamID: req.TeamID, RunID: req.RunID, Msg: err.Error()})
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 		return
@@ -145,7 +146,7 @@ func handlePostEnd(w http.ResponseWriter, r *http.Request) {
 				CompletedRuns: []storage.CompletedRun{completedRun},
 			}
 		} else {
-			LogError("EndScoreNotFound", &LogData{TeamID: req.TeamID, RunID: req.RunID, Msg: err.Error()})
+			LogError("EndGetScoreFailure", &LogData{TeamID: req.TeamID, RunID: req.RunID, Msg: err.Error()})
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}

@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -25,12 +24,17 @@ func StartHandler() http.HandlerFunc {
 		case http.MethodPost:
 			handlePostStart(w, r)
 		default:
-			LogWarning("StartInvalidRequest", &LogData{Msg: errors.New("method not allowed").Error()})
+			LogWarning("StartInvalidRequest", &LogData{Msg: "method not allowed"})
 			http.Error(w, "HTTP Method not allowed", http.StatusMethodNotAllowed)
 		}
 	}
 }
 
+// /api/start is hit once a team wants to start a new run.
+// This handler will:
+// 1. Validate the request
+// 2. Create a new active run for the team
+// 3. Return the response
 func handlePostStart(w http.ResponseWriter, r *http.Request) {
 	var req StartRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -40,7 +44,7 @@ func handlePostStart(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.TeamID == "" {
-		LogWarning("StartInvalidRequest", &LogData{Msg: "empty team_id"})
+		LogWarning("StartEmptyTeamID", &LogData{})
 		http.Error(w, "team_id cannot be empty", http.StatusBadRequest)
 		return
 	}
