@@ -9,7 +9,6 @@ import (
 
 	. "wordle-tournament-backend/internal/common"
 	"wordle-tournament-backend/internal/storage"
-	"wordle-tournament-backend/internal/wordle"
 )
 
 type StartRequest struct {
@@ -26,7 +25,7 @@ func StartHandler() http.HandlerFunc {
 		case http.MethodPost:
 			handlePostStart(w, r)
 		default:
-			LogWarning("start", &LogData{Msg: errors.New("method not allowed").Error()})
+			LogWarning("StartInvalidRequest", &LogData{Msg: errors.New("method not allowed").Error()})
 			http.Error(w, "HTTP Method not allowed", http.StatusMethodNotAllowed)
 		}
 	}
@@ -35,21 +34,23 @@ func StartHandler() http.HandlerFunc {
 func handlePostStart(w http.ResponseWriter, r *http.Request) {
 	var req StartRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		LogWarning("start", &LogData{Msg: err.Error()})
+		LogWarning("StartInvalidRequest", &LogData{Msg: err.Error()})
 		http.Error(w, "Invalid json body", http.StatusBadRequest)
 		return
 	}
 
-	if err := wordle.ValidateTeamId(req.TeamID); err != nil {
-		LogWarning("start", &LogData{TeamID: req.TeamID, Msg: err.Error()})
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+	if req.TeamID == "" {
+		LogWarning("StartInvalidRequest", &LogData{Msg: "empty team_id"})
+		http.Error(w, "team_id cannot be empty", http.StatusBadRequest)
 		return
 	}
 
 	runID := uuid.New().String()
-	LogInfo("start", &LogData{TeamID: req.TeamID, RunID: runID, Msg: "entered start handler"})
+	LogInfo("StartProcessRequest", &LogData{TeamID: req.TeamID, RunID: runID})
+
+	// Create a new active run for the team
 	if err := storage.PutDefaultActiveRun(req.TeamID, runID); err != nil {
-		LogError("start", &LogData{TeamID: req.TeamID, RunID: runID, Msg: err.Error()})
+		LogError("StartCreateActiveRunFailure", &LogData{TeamID: req.TeamID, RunID: runID, Msg: err.Error()})
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
